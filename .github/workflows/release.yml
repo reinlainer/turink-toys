@@ -73,8 +73,11 @@ jobs:
             The command line interface installs alongside the application as
             `turink-toys`.
 
+      # secrets is referenced directly. Checking env here would compare against
+      # a value the same step has not set yet, so the condition would never be
+      # true and the cask would never update.
       - name: Update Homebrew cask
-        if: ${{ env.TAP_TOKEN != '' }}
+        if: ${{ secrets.TAP_TOKEN != '' }}
         env:
           TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
           VERSION: ${{ steps.package.outputs.version }}
