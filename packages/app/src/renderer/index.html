@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
+<title>turink-toys</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="drag-strip"></div>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="brand">Turink Toys</div>
+      <div id="task-list" class="task-list"></div>
+      <div class="sidebar-foot">
+        <select id="language-select" class="language-select" aria-label="Language"></select>
+        <button id="show-runs" class="ghost-button" type="button">Recent runs</button>
+      </div>
+    </nav>
+
+    <main class="panel">
+      <header class="panel-head">
+        <h1 id="task-title">Select a task</h1>
+        <p id="task-when" class="when"></p>
+        <div id="task-tags" class="tags"></div>
+      </header>
+
+      <form id="task-form" class="form" autocomplete="off"></form>
+      <div id="result-card" class="result-slot" hidden></div>
+
+      <div class="actions">
+        <button id="run-button" class="primary-button" type="button" disabled>Run</button>
+        <span id="command-preview" class="command-preview"></span>
+        <button id="copy-command" class="ghost-button small" type="button" hidden>Copy command</button>
+      </div>
+    </main>
+
+    <section class="console">
+      <header class="console-head">
+        <span class="console-title" id="console-title">Console</span>
+        <label class="toggle">
+          <input type="checkbox" id="raw-toggle">
+          <span id="raw-label">Raw events</span>
+        </label>
+        <button id="clear-console" class="ghost-button small" type="button">Clear</button>
+      </header>
+      <div id="console-body" class="console-body"></div>
+    </section>
+  </div>
+
+  <div id="confirm-sheet" class="sheet" hidden>
+    <div class="sheet-body">
+      <h2 id="confirm-title">Confirm</h2>
+      <p id="confirm-message" class="sheet-message"></p>
+      <div id="confirm-extra"></div>
+      <div id="confirm-detail" class="sheet-detail"></div>
+      <div class="sheet-actions">
+        <button id="confirm-cancel" class="ghost-button" type="button">Cancel</button>
+        <button id="confirm-accept" class="danger-button" type="button">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="dom.js"></script>
+  <script src="console.js"></script>
+  <script src="sheet.js"></script>
+  <script src="form.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

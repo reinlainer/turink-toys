@@ -1,0 +1,11 @@
+{
+  "name": "@turink/core",
+  "version": "0.1.0",
+  "description": "Task kernel and implementations shared by every turink-toys front end",
+  "license": "MIT",
+  "main": "src/index.js",
+  "dependencies": {
+    "yauzl": "^3.4.0",
+    "yazl": "^3.3.1"
+  }
+}

@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    Application icon.
+
+    The palette is taken from turink.com: a near-black navy ground (#101828),
+    white for the mark and a single blue accent (#3b82f6), matching the site's
+    declared theme colour. Keeping to it means this tool is recognisably part of
+    the same family rather than a separate product that happens to share a name.
+
+    A toolbox reads as "utilities" at every size and stays legible when the
+    Finder draws it at 16 points, which a more literal drawing of an archive or
+    a disk would not. Light comes from the upper left and every highlight and
+    shadow follows that one direction.
+  -->
+  <defs>
+    <linearGradient id="ground" x1="0.1" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#1e2a45"/>
+      <stop offset="0.45" stop-color="#141d31"/>
+      <stop offset="1" stop-color="#0b1120"/>
+    </linearGradient>
+
+    <!-- A corner highlight rather than a full sheet, which would lift the whole
+         ground into grey and lose the depth. -->
+    <radialGradient id="glow" cx="0.24" cy="0.15" r="0.72">
+      <stop offset="0" stop-color="#3b82f6" stop-opacity="0.34"/>
+      <stop offset="0.5" stop-color="#3b82f6" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="lid" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef2f8"/>
+    </linearGradient>
+
+    <linearGradient id="case" x1="0" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#f7f9fc"/>
+      <stop offset="1" stop-color="#cfd6e2"/>
+    </linearGradient>
+
+    <linearGradient id="grip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dde3ee"/>
+    </linearGradient>
+
+    <linearGradient id="latch" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5b9bff"/>
+      <stop offset="1" stop-color="#2f6fe0"/>
+    </linearGradient>
+
+    <filter id="lift" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+
+    <clipPath id="caseClip">
+      <rect x="286" y="392" width="452" height="316" rx="54" ry="54"/>
+    </clipPath>
+  </defs>
+
+  <!-- Rounded ground, inset the way macOS icons leave room around their shape. -->
+  <rect x="100" y="100" width="824" height="824" rx="186" ry="186" fill="url(#ground)"/>
+  <rect x="100" y="100" width="824" height="824" rx="186" ry="186" fill="url(#glow)"/>
+  <!-- A hairline edge keeps the silhouette from dissolving on a dark desktop. -->
+  <rect x="103" y="103" width="818" height="818" rx="183" ry="183"
+        fill="none" stroke="#7ea9f0" stroke-opacity="0.22" stroke-width="6"/>
+
+  <g filter="url(#lift)">
+    <!-- Handle. Drawn as a stroke so it stays open and reads as a grip. -->
+    <path d="M404 400 L404 358 Q404 316 446 316 L578 316 Q620 316 620 358 L620 400"
+          fill="none" stroke="url(#grip)" stroke-width="44"
+          stroke-linecap="round" stroke-linejoin="round"/>
+
+    <g clip-path="url(#caseClip)">
+      <rect x="286" y="392" width="452" height="316" fill="url(#case)"/>
+      <!-- Lid, a shade brighter than the case so the two halves separate
+           without needing a heavy line between them. -->
+      <rect x="286" y="392" width="452" height="126" fill="url(#lid)"/>
+      <!-- The seam itself: one dark hairline with a lit edge beneath it, which
+           is what makes a groove rather than a painted stripe. -->
+      <rect x="286" y="516" width="452" height="5" fill="#101828" opacity="0.42"/>
+      <rect x="286" y="521" width="452" height="4" fill="#ffffff" opacity="0.9"/>
+    </g>
+
+    <!-- Latch. The only place the accent appears, which gives the icon a centre
+         to settle on and carries the brand colour. -->
+    <rect x="464" y="486" width="96" height="68" rx="20" ry="20" fill="url(#latch)"/>
+    <rect x="464" y="486" width="96" height="68" rx="20" ry="20"
+          fill="none" stroke="#16305c" stroke-opacity="0.35" stroke-width="3"/>
+    <rect x="489" y="511" width="46" height="18" rx="9" ry="9" fill="#ffffff" opacity="0.92"/>
+  </g>
+</svg>

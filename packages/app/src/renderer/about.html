@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
+<title>About</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* The panel is a fixed-size card rather than a resizable window, so it keeps
+     its own layout instead of borrowing the main window's grid. */
+  body { background: var(--surface); overflow: hidden; }
+
+  .about {
+    -webkit-app-region: drag;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 34px 32px 26px;
+    height: 100vh;
+    box-sizing: border-box;
+  }
+
+  .about img {
+    width: 88px;
+    height: 88px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+
+  .about h1 {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 3px;
+  }
+
+  .about .version {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    margin: 0 0 14px;
+  }
+
+  .about .tagline {
+    font-size: 12.5px;
+    color: var(--ink-2);
+    line-height: 1.6;
+    max-width: 32ch;
+    margin: 0 0 20px;
+  }
+
+  .links {
+    -webkit-app-region: no-drag;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .links a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 13px;
+    background: var(--ground);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 12.5px;
+  }
+  .links a:hover { background: var(--surface-2); }
+  .links a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .links .key { color: var(--ink-2); }
+  .links .val {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .links .key { flex: none; }
+
+  .about footer {
+    margin-top: auto;
+    font-size: 11px;
+    color: var(--ink-3);
+    border: 0;
+    padding: 0;
+    display: block;
+  }
+</style>
+</head>
+<body>
+  <div class="about">
+    <img id="about-icon" alt="">
+    <h1 id="about-name">Turink Toys</h1>
+    <p class="version" id="about-version"></p>
+    <p class="tagline" id="about-tagline"></p>
+
+    <nav class="links">
+      <a href="#" id="link-home">
+        <span class="key" id="label-home"></span>
+        <span class="val">turink.com</span>
+      </a>
+      <a href="#" id="link-source">
+        <span class="key" id="label-source"></span>
+        <span class="val">reinlainer/turink-toys</span>
+      </a>
+    </nav>
+
+    <footer id="about-license"></footer>
+  </div>
+  <script src="about.js"></script>
+</body>
+</html>

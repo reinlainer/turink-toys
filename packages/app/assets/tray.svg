@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 44" width="44" height="44">
+  <!--
+    Menu bar icon. A template image: drawn in flat black on transparency so
+    macOS can invert it for a light or dark menu bar and dim it when the app is
+    not frontmost. Any colour here would defeat that, so the mark is a plain
+    outline of the same toolbox the application icon uses.
+  -->
+  <g fill="none" stroke="#000000" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15.5 16.5 V14 Q15.5 11.5 18 11.5 H26 Q28.5 11.5 28.5 14 V16.5"/>
+    <rect x="8.5" y="16.5" width="27" height="17" rx="3.4" ry="3.4"/>
+    <path d="M8.5 24.5 H35.5"/>
+  </g>
+  <rect x="19.6" y="22.2" width="4.8" height="4.6" rx="1.4" ry="1.4" fill="#000000"/>
+</svg>
