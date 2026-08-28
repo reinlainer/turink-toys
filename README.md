@@ -1,4 +1,4 @@
-# turink-toys
+# Turink Toys
 
 macOS housekeeping utilities that people and AI agents drive through the same core.
 
