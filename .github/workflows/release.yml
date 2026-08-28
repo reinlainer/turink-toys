@@ -23,6 +23,12 @@ jobs:
   release:
     runs-on: macos-latest
 
+    # The secret is bound at job level because a step's own `if` cannot read
+    # `secrets` directly, and a value set in the same step's `env` block is not
+    # available to that step's condition either.
+    env:
+      TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -73,13 +79,11 @@ jobs:
             The command line interface installs alongside the application as
             `turink-toys`.
 
-      # secrets is referenced directly. Checking env here would compare against
-      # a value the same step has not set yet, so the condition would never be
-      # true and the cask would never update.
+      # Skipped rather than failed when no token is configured, so a release
+      # still publishes without the tap.
       - name: Update Homebrew cask
-        if: ${{ secrets.TAP_TOKEN != '' }}
+        if: env.TAP_TOKEN != ''
         env:
-          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
           VERSION: ${{ steps.package.outputs.version }}
           SHA256: ${{ steps.package.outputs.sha256 }}
         run: |
