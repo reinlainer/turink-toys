@@ -1,0 +1,30 @@
+#!/bin/sh
+# Launcher for the command line interface inside the application bundle.
+#
+# The bundle ships Electron rather than a plain Node runtime, so the CLI is run
+# through it. ELECTRON_RUN_AS_NODE makes that binary behave as Node and skip
+# every window, which is what lets one install serve both the app and the
+# command without shipping a second runtime.
+#
+# Homebrew links this file into its bin directory, so the path is resolved from
+# the link's own location rather than assumed.
+
+set -eu
+
+SELF=$0
+while [ -L "$SELF" ]; do
+  LINK=$(readlink "$SELF")
+  case $LINK in
+    /*) SELF=$LINK ;;
+    *) SELF=$(dirname "$SELF")/$LINK ;;
+  esac
+done
+
+BIN_DIR=$(cd "$(dirname "$SELF")" && pwd)
+# .../Contents/Resources/app/packages/cli/bin -> .../Contents
+CONTENTS=$(cd "$BIN_DIR/../../../../.." && pwd)
+
+MAIN="$CONTENTS/Resources/app/packages/cli/src/main.js"
+ELECTRON=$(ls "$CONTENTS/MacOS" | head -1)
+
+ELECTRON_RUN_AS_NODE=1 exec "$CONTENTS/MacOS/$ELECTRON" "$MAIN" "$@"

@@ -18,6 +18,13 @@
     set('label-source', info.labels.source);
     set('about-license', info.license);
 
+    if (info.update) {
+      const box = document.getElementById('about-update');
+      box.hidden = false;
+      box.querySelector('.update-label').textContent = info.update.label;
+      box.querySelector('.update-command').textContent = info.update.command;
+    }
+
     for (const [id, url] of [
       ['link-home', info.homepage],
       ['link-source', info.source],

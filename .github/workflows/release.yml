@@ -1,0 +1,93 @@
+# Builds the application on a tag and publishes it, then updates the Homebrew
+# cask so the tap and the release cannot fall out of step.
+#
+# The job runs on macOS because the bundle is assembled from the Electron
+# distribution for this platform and signed ad hoc with the system codesign.
+#
+# Updating the tap needs a token with write access to the tap repository, held
+# as the TAP_TOKEN secret. Without it the release still publishes and the cask
+# step is skipped rather than failing the run.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build icons
+        run: npx electron scripts/build-icons.js
+
+      - name: Build application bundle
+        run: npm run bundle
+
+      - name: Package release archive
+        id: package
+        run: |
+          npm run release
+          VERSION=$(node -p "require('./package.json').version")
+          SHA=$(awk '{print $1}' dist/checksum.txt)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/turink-toys-${{ steps.package.outputs.version }}.zip
+          body: |
+            ## Install
+
+            ```
+            brew install --cask reinlainer/tap/turink-toys
+            ```
+
+            Without Homebrew, move the application to `/Applications` and clear
+            the quarantine attribute, which an unsigned build needs in order to
+            launch:
+
+            ```
+            xattr -dr com.apple.quarantine "/Applications/Turink Toys.app"
+            ```
+
+            The command line interface installs alongside the application as
+            `turink-toys`.
+
+      - name: Update Homebrew cask
+        if: ${{ env.TAP_TOKEN != '' }}
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+          VERSION: ${{ steps.package.outputs.version }}
+          SHA256: ${{ steps.package.outputs.sha256 }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/reinlainer/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          sed -e "s/__VERSION__/${VERSION}/" -e "s/__SHA256__/${SHA256}/" \
+            packaging/turink-toys.rb > tap/Casks/turink-toys.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/turink-toys.rb
+          git diff --cached --quiet && exit 0
+          git commit -m "turink-toys ${VERSION}"
+          git push

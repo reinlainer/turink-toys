@@ -9,11 +9,29 @@ command and an agent all reach identical code, and the executable describes its
 own capabilities so an agent can discover and call them without external
 documentation.
 
+## Install
+
+```bash
+brew install --cask reinlainer/tap/turink-toys
+```
+
+That installs the application into `/Applications` and the `turink-toys`
+command alongside it. `brew upgrade` updates both.
+
+Without Homebrew, download the archive from the releases page, move the
+application to `/Applications`, and clear the quarantine attribute, which an
+unsigned build needs in order to launch:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Turink Toys.app"
+```
+
 ## Status
 
-Under development. The core, the command line interface, the Finder quick
-actions and the desktop application work. Packaging and distribution are not
-built yet, so the app runs from source.
+Working: the core, the command line interface, the Finder quick actions, the
+desktop application and the Homebrew cask. The build is not signed with a
+Developer ID, so updates go through Homebrew rather than replacing the
+application in place.
 
 ## What it does
 
@@ -214,6 +232,25 @@ turink-toys disk.clean --targets android.sdk --lang ko --json
 Adding a language means one file under `packages/core/src/i18n/`. English lives
 in the task manifests themselves, so an untranslated string falls back to real
 text rather than to a key.
+
+## Releasing
+
+```bash
+npm run bundle     # assemble Turink Toys.app
+npm run release    # package dist/turink-toys-<version>.zip and its checksum
+```
+
+Pushing a `v*` tag runs the same steps on a macOS runner, publishes the archive
+and rewrites the cask in the tap from `packaging/turink-toys.rb`. The cask is
+generated rather than edited, so its version and checksum cannot drift from the
+release they describe.
+
+Updating the tap needs a `TAP_TOKEN` secret with write access to the tap
+repository. Without it the release still publishes and only the cask step is
+skipped.
+
+The archive is produced with `ditto` rather than `zip`, because a bundle's
+symlinks have to survive the round trip or the application will not launch.
 
 ## Building a bundle
 

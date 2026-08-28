@@ -5,6 +5,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, nativeImage } = 
 const core = require('@turink/core');
 const watcher = require('./watcher');
 const appMenu = require('./menu');
+const updates = require('./updates');
 
 const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
 
@@ -29,6 +30,7 @@ let locale = 'en';
 let mainWindow = null;
 let aboutWindow = null;
 let tray = null;
+let updateAvailable = null;
 const localRuns = new Set();
 
 // The window calls the same core functions the command line does. Nothing here
@@ -151,6 +153,18 @@ async function buildTrayMenu() {
       });
     }
     items.push({ type: 'separator' });
+  }
+
+  if (updateAvailable) {
+    items.push(
+      {
+        label: i18n.t(locale, 'update.available', 'Version {version} is available', {
+          version: updateAvailable.version,
+        }),
+        click: () => shell.openExternal(updateAvailable.url || SOURCE),
+      },
+      { type: 'separator' }
+    );
   }
 
   items.push(
@@ -383,6 +397,15 @@ ipcMain.handle('about:info', () => ({
   license: i18n.t(locale, 'about.license', 'MIT licensed. Free and open source.'),
   homepage: HOMEPAGE,
   source: SOURCE,
+  update: updateAvailable
+    ? {
+        version: updateAvailable.version,
+        label: i18n.t(locale, 'update.available', 'Version {version} is available', {
+          version: updateAvailable.version,
+        }),
+        command: 'brew upgrade --cask turink-toys',
+      }
+    : null,
   icon: nativeImage
     .createFromPath(path.join(ASSETS, 'icon.png'))
     .resize({ width: 176, height: 176 })
@@ -422,6 +445,15 @@ app.whenReady().then(() => {
   // A run started from the command line or a quick action writes to the same
   // journal directory. Watching it is what lets someone see an agent working
   // while the app is open.
+  // Checked once a day at most, and never blocking startup. A machine with no
+  // network simply carries on.
+  updates.check(VERSION).then((found) => {
+    if (!found) return;
+    updateAvailable = found;
+    refreshTray();
+    send('update:available', found);
+  });
+
   watcher.watchRuns(
     (update) => {
       send('run:external', update);

@@ -15,6 +15,11 @@ module.exports = {
     power: '전원',
   },
 
+  update: {
+    available: '{version} 버전이 나왔습니다',
+    howTo: '터미널에서 아래 명령으로 갱신합니다.',
+  },
+
   about: {
     tagline: '사람과 AI 에이전트가 같은 코어를 통해 다루는 macOS 편의 도구.',
     homepage: '만든 곳',

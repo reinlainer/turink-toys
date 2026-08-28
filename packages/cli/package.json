@@ -8,5 +8,9 @@
   },
   "dependencies": {
     "@turink/core": "0.1.0"
-  }
+  },
+  "files": [
+    "src",
+    "bin"
+  ]
 }
