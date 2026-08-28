@@ -28,8 +28,15 @@ const ROOT = path.resolve(__dirname, '..');
 // named "Google Chrome" and "Cursor" rather than after a package. The CLI
 // inside Resources stays "turink-toys", since that is what gets typed.
 const CLI_NAME = 'turink-toys';
-const DISPLAY_NAME = 'Turink Toys';
-const BUNDLE_ID = 'toys.turink.app';
+
+// A local bundle is a development artifact and must not look like the release
+// to macOS. Two bundles sharing an identifier are treated as copies of one
+// application, so both appear in Launchpad and Spotlight and either may answer
+// when the app is opened. Passing --release gives the shipping identity; the
+// default marks the build as local so the two can coexist.
+const RELEASE = process.argv.includes('--release');
+const DISPLAY_NAME = RELEASE ? 'Turink Toys' : 'Turink Toys-dev';
+const BUNDLE_ID = RELEASE ? 'toys.turink.app' : 'toys.turink.app.dev';
 
 const OUT = path.join(ROOT, 'build');
 const BUNDLE = path.join(OUT, `${DISPLAY_NAME}.app`);
@@ -154,6 +161,12 @@ function main() {
 
   process.stdout.write(`Built ${BUNDLE}\n`);
   process.stdout.write('Unsigned and not notarised. For local use only.\n');
+  if (!RELEASE) {
+    process.stdout.write(
+      `Development build, identified as ${BUNDLE_ID}. It will not collide with an\n` +
+        'installed release. Pass --release to build the shipping identity.\n'
+    );
+  }
 }
 
 main();

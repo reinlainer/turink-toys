@@ -259,12 +259,22 @@ because macOS reads those from the running bundle rather than from anything the
 process sets. Building one carries the product name instead:
 
 ```bash
-npm run bundle
-open "build/Turink Toys.app"
+npm run bundle          # Turink Toys-dev, for local checks
+open "build/Turink Toys-dev.app"
+npm run clean           # remove it and withdraw it from Launch Services
 ```
 
-The result is unsigned and meant for local use. The identifier and the command
-line tool stay `turink-toys`; everything a person reads says Turink Toys.
+A development build is named `Turink Toys-dev` and identified as
+`toys.turink.app.dev`, so it never looks like a second copy of an installed
+release. Two bundles sharing an identifier appear together in Launchpad and
+either may answer when the application is opened.
+
+Deleting the directory is not enough on its own, because macOS remembers a
+bundle it has seen. `npm run clean` unregisters it as well, and `npm run bundle`
+runs it first so entries cannot accumulate.
+
+`npm run bundle:release` produces the shipping identity. The release workflow
+uses it; there is rarely a reason to run it by hand.
 
 ## Finder quick actions
 

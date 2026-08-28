@@ -46,7 +46,7 @@ jobs:
         run: npx electron scripts/build-icons.js
 
       - name: Build application bundle
-        run: npm run bundle
+        run: npm run bundle:release
 
       - name: Package release archive
         id: package

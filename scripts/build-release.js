@@ -12,6 +12,8 @@ const { execFileSync } = require('child_process');
 // will not launch on the other side.
 
 const ROOT = path.resolve(__dirname, '..');
+// Only the release identity is ever packaged. A development bundle carries a
+// different name and identifier, so naming it here would ship the wrong build.
 const DISPLAY_NAME = 'Turink Toys';
 const BUILD = path.join(ROOT, 'build');
 const DIST = path.join(ROOT, 'dist');
@@ -23,7 +25,7 @@ function version() {
 function main() {
   const bundle = path.join(BUILD, `${DISPLAY_NAME}.app`);
   if (!fs.existsSync(bundle)) {
-    process.stderr.write('No bundle found. Run npm run bundle first.\n');
+    process.stderr.write('No release bundle found. Run npm run bundle:release first.\n');
     process.exit(1);
   }
 

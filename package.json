@@ -16,8 +16,10 @@
     "test": "node --test packages/*/test/*.test.js",
     "app": "electron packages/app/src/main.js",
     "icons": "electron scripts/build-icons.js",
-    "bundle": "node scripts/bundle-app.js",
-    "release": "node scripts/build-release.js"
+    "bundle": "npm run clean && node scripts/bundle-app.js",
+    "release": "node scripts/build-release.js",
+    "bundle:release": "npm run clean && node scripts/bundle-app.js --release",
+    "clean": "node scripts/clean.js"
   },
   "engines": {
     "node": ">=20.0.0"
