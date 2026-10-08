@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { registry, i18n } = require('@turink/core');
 
 // Installs Finder quick actions into ~/Library/Services. Each one is an
 // Automator workflow bundle whose single step runs the turink-toys command with
@@ -18,30 +19,52 @@ const { execFileSync } = require('child_process');
 
 const SERVICES_DIR = path.join(os.homedir(), 'Library', 'Services');
 
+// A quick action carries no name of its own. The menu entry is the title the
+// task manifest declares, so a name is written in one place rather than three.
+// The entry stays English in every language, matching the command it runs.
 const ACTIONS = [
   {
-    name: 'Compress for Windows',
     identifier: 'toys.turink.quickaction.compress',
     sendTypes: ['public.item'],
     task: 'archive.compress',
     successLabel: 'Archive created',
+    // Names earlier releases wrote. Listed so an installation made before the
+    // titles moved into the manifest can still be removed.
+    legacyNames: ['Compress for Windows'],
   },
   {
-    name: 'Extract Safely',
     identifier: 'toys.turink.quickaction.extract',
     sendTypes: ['com.pkware.zip-archive'],
     task: 'archive.extract',
     extraArgs: ['--auto'],
     successLabel: 'Archive extracted',
+    legacyNames: ['Extract Safely'],
   },
   {
-    name: 'Check Windows Compatibility',
     identifier: 'toys.turink.quickaction.verify',
     sendTypes: ['com.pkware.zip-archive'],
     task: 'archive.verify',
     successLabel: 'Check complete',
+    legacyNames: ['Check Windows Compatibility'],
   },
 ];
+
+function canonicalName(action) {
+  return registry.get(action.task).title;
+}
+
+// Every name an action may already be installed under. Releases before the
+// titles moved into the manifest wrote their own, and a release in between
+// named the bundle in whichever language it detected, so both have to be swept
+// or Finder shows the leftovers next to the current entry.
+function bundlePaths(action) {
+  const names = new Set([
+    canonicalName(action),
+    ...i18n.available().map((locale) => i18n.localizeTask(registry.get(action.task), locale).title),
+    ...(action.legacyNames || []),
+  ]);
+  return [...names].map((name) => path.join(SERVICES_DIR, `${name}.workflow`));
+}
 
 // A quick action runs with a minimal PATH, so the command is resolved at
 // install time and written into the script as an absolute path.
@@ -143,15 +166,15 @@ function workflowDocument(command, action) {
   };
 }
 
-function infoPlist(action) {
+function infoPlist(action, name) {
   return {
     CFBundleIdentifier: action.identifier,
-    CFBundleName: action.name,
+    CFBundleName: name,
     CFBundlePackageType: 'BNDL',
     CFBundleShortVersionString: '1.0',
     NSServices: [
       {
-        NSMenuItem: { default: action.name },
+        NSMenuItem: { default: name },
         NSMessage: 'runWorkflowAsService',
         NSRequiredContext: { NSApplicationIdentifier: 'com.apple.finder' },
         NSSendFileTypes: action.sendTypes,
@@ -170,11 +193,17 @@ function writePlist(target, value) {
 }
 
 function install(action, command) {
-  const bundle = path.join(SERVICES_DIR, `${action.name}.workflow`);
-  fs.rmSync(bundle, { recursive: true, force: true });
+  // Clearing every name the action may already carry, not just the one about to
+  // be written, is what keeps an upgrade from leaving a second entry in the menu.
+  for (const previous of bundlePaths(action)) {
+    fs.rmSync(previous, { recursive: true, force: true });
+  }
+
+  const name = canonicalName(action);
+  const bundle = path.join(SERVICES_DIR, `${name}.workflow`);
   fs.mkdirSync(path.join(bundle, 'Contents', 'Resources'), { recursive: true });
 
-  writePlist(path.join(bundle, 'Contents', 'Info.plist'), infoPlist(action));
+  writePlist(path.join(bundle, 'Contents', 'Info.plist'), infoPlist(action, name));
   writePlist(
     path.join(bundle, 'Contents', 'Resources', 'document.wflow'),
     workflowDocument(command, action)
@@ -186,8 +215,8 @@ function install(action, command) {
 function uninstall() {
   let removed = 0;
   for (const action of ACTIONS) {
-    const bundle = path.join(SERVICES_DIR, `${action.name}.workflow`);
-    if (fs.existsSync(bundle)) {
+    for (const bundle of bundlePaths(action)) {
+      if (!fs.existsSync(bundle)) continue;
       fs.rmSync(bundle, { recursive: true, force: true });
       removed += 1;
     }
@@ -236,4 +265,12 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { ACTIONS, install, uninstall, resolveCommand, SERVICES_DIR };
+module.exports = {
+  ACTIONS,
+  install,
+  uninstall,
+  resolveCommand,
+  canonicalName,
+  bundlePaths,
+  SERVICES_DIR,
+};

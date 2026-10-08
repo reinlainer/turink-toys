@@ -282,10 +282,18 @@ uses it; there is rarely a reason to run it by hand.
 node integrations/quick-actions/install.js
 ```
 
-Installs Compress for Windows, Extract Safely and Check Windows Compatibility
-into `~/Library/Services`. They appear under Quick Actions in the Finder context
-menu and accept a multiple selection. Results arrive through Notification
-Center, since a quick action has nowhere else to report.
+Installs quick actions for `archive.compress`, `archive.extract` and
+`archive.verify` into `~/Library/Services`. They appear under Quick Actions in
+the Finder context menu and accept a multiple selection. Results arrive through
+Notification Center, since a quick action has nowhere else to report.
+
+A menu entry carries the title its task manifest declares, and stays English in
+every language. A quick action names the command it runs, so the menu, the
+reference and the command line all answer to one name.
+
+The installer removes every name an action has previously been installed under,
+so upgrading from a release that named the bundle differently replaces the entry
+instead of leaving a second one in the menu.
 
 Pass `uninstall` to remove them. Assign keyboard shortcuts under System
 Settings > Keyboard > Keyboard Shortcuts > Services.

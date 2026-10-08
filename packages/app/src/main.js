@@ -171,7 +171,10 @@ async function buildTrayMenu() {
     { label: i18n.t(locale, 'menu.mainWindow', `${DISPLAY_NAME} Window`, { name: DISPLAY_NAME }), click: () => createWindow() },
     { label: i18n.t(locale, 'menu.about', `About ${DISPLAY_NAME}`, { name: DISPLAY_NAME }), click: () => openAbout() },
     {
-      label: 'Compress files for Windows…',
+      // The task's own title, the same one the Finder quick action shows. Menu
+      // entries naming a task stay English so one name reaches every surface.
+      // The ellipsis marks the file picker this entry opens before anything runs.
+      label: `${registry.get('archive.compress').title}…`,
       click: async () => {
         const picked = await dialog.showOpenDialog({
           properties: ['openFile', 'openDirectory', 'multiSelections'],
