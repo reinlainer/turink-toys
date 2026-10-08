@@ -15,9 +15,10 @@ const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
 // the same answer in both cases.
 const VERSION = require('../package.json').version;
 
-const { registry, execute, journal, errors, i18n, settings, present } = core;
+const { registry, execute, journal, i18n, settings, present } = core;
 const { validateInput } = require('@turink/core/src/kernel/manifest');
 const { execFile } = require('child_process');
+const { Worker } = require('worker_threads');
 const execFileAsync = require('util').promisify(execFile);
 
 // The identifier and the executable stay hyphenated because a command is typed
@@ -283,17 +284,50 @@ function buildUiStrings() {
   return ui;
 }
 
+// Every run a window starts goes through a worker thread, so a task that walks
+// a large tree cannot freeze the window while it works. Resolves with the
+// outcome, or rejects with { error, payload, runId } as the core reported it.
+function runInWorker(taskId, input, options, hooks = {}) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(path.join(__dirname, 'task-worker.js'), {
+      workerData: { taskId, input, options },
+    });
+    let settled = false;
+    worker.on('message', (message) => {
+      if (message.type === 'start' && hooks.onStart) hooks.onStart(message.runId);
+      else if (message.type === 'event' && hooks.onEvent) hooks.onEvent(message.record);
+      else if (message.type === 'done') {
+        settled = true;
+        resolve(message.outcome);
+      } else if (message.type === 'error') {
+        settled = true;
+        reject(message);
+      }
+    });
+    worker.on('error', (err) => {
+      settled = true;
+      reject({ error: { code: 'FAILED', message: err.message, retryable: false } });
+    });
+    worker.on('exit', (code) => {
+      if (!settled) reject({ error: { code: 'FAILED', message: `The task stopped unexpectedly (${code}).`, retryable: false } });
+    });
+  });
+}
+
 ipcMain.handle('task:run', async (event, { taskId, input, confirm }) => {
   try {
-    const outcome = await execute.runTask(taskId, input, {
-      source: 'app',
-      confirm: confirm || null,
-      onStart: (runId) => {
-        localRuns.add(runId);
-        send('run:started', { runId, taskId });
-      },
-      onEvent: (record) => send('run:event', record),
-    });
+    const outcome = await runInWorker(
+      taskId,
+      input,
+      { source: 'app', confirm: confirm || null },
+      {
+        onStart: (runId) => {
+          localRuns.add(runId);
+          send('run:started', { runId, taskId });
+        },
+        onEvent: (record) => send('run:event', record),
+      }
+    );
     refreshTray();
     return {
       ok: true,
@@ -304,16 +338,12 @@ ipcMain.handle('task:run', async (event, { taskId, input, confirm }) => {
         (key, fallback, params) => i18n.t(locale, key, fallback, params)
       ),
     };
-  } catch (err) {
-    const payload =
-      err instanceof errors.TaskError
-        ? err.toJSON()
-        : { code: 'FAILED', message: err.message, retryable: false };
+  } catch (failure) {
     return {
       ok: false,
-      error: i18n.localizeError(payload, locale),
-      plan: err.payload?.plan || null,
-      runId: err.runId || null,
+      error: i18n.localizeError(failure.error, locale),
+      plan: failure.payload?.plan || null,
+      runId: failure.runId || null,
     };
   }
 });
@@ -411,11 +441,10 @@ ipcMain.handle('shell:external', (event, url) => {
 // core only honours this for read-only tasks.
 ipcMain.handle('task:peek', async (event, { taskId, input }) => {
   try {
-    const outcome = await execute.runTask(taskId, input || {}, { source: 'app', ephemeral: true });
+    const outcome = await runInWorker(taskId, input || {}, { source: 'app', ephemeral: true });
     return { ok: true, ...outcome };
-  } catch (err) {
-    const payload = err instanceof errors.TaskError ? err.toJSON() : { code: 'FAILED', message: err.message };
-    return { ok: false, error: i18n.localizeError(payload, locale) };
+  } catch (failure) {
+    return { ok: false, error: i18n.localizeError(failure.error, locale) };
   }
 });
 
@@ -433,7 +462,10 @@ function runResult(runId) {
 // what a list row needs to describe them. A run already put back by a later
 // restore is left out, so the list only offers what is still in the Trash.
 ipcMain.handle('runs:undoable', (event, taskId) => {
-  const runs = journal.list({ limit: 80 });
+  // The whole journal, which is pruned after thirty days, rather than the
+  // latest few runs: a cleanup still in the Trash must not drop off the list
+  // just because many other runs happened since. Reading it takes milliseconds.
+  const runs = journal.list({ limit: Infinity });
   const undone = new Set(
     runs
       .filter((run) => run.task === UNDO_TASK[taskId] && run.status === 'ok')

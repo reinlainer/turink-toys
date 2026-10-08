@@ -7,7 +7,7 @@
 //
 // Fixed terms, matching the Korean macOS user guide where it has one:
 // 압축 / 압축 해제 (compress / extract), 휴지통으로 이동 (move to Trash),
-// 되돌려 놓기 (put back), 삭제 (delete), 선택 (select), 다운로드 (download),
+// 되돌리기 (put back, Finder's 되돌려 놓기), 삭제 (delete), 선택 (select), 다운로드 (download),
 // 드래그 (drag), 잠자기 상태 (sleep), 디스플레이를 닫은 상태 (lid closed),
 // 캐시 (cache), 툴체인 (toolchain), 앱 (application), 실행 (run).
 
@@ -76,10 +76,10 @@ module.exports = {
     dropHint: '이곳으로 드래그하거나 선택 버튼을 클릭하십시오.',
     kindCache: '자동 재생성',
     kindToolchain: '재설치 필요',
-    undo: '되돌려 놓기',
+    undo: '되돌리기',
     options: '옵션',
     moveToTrash: '휴지통으로 이동',
-    trashNote: '모든 항목은 휴지통으로 이동되며, 최근 정리 내역에서 되돌려 놓을 수 있습니다.',
+    trashNote: '모든 항목은 휴지통으로 이동되며, 최근 정리 내역에서 되돌릴 수 있습니다.',
 
     nav: {
       archive: '압축',
@@ -163,7 +163,7 @@ module.exports = {
       nothingSelected: '정리할 항목을 선택하십시오',
       selection: '{count}개 선택됨 · {size}',
       recent: '최근 정리 내역',
-      noRecent: '되돌려 놓을 수 있는 정리 내역이 이곳에 표시됩니다.',
+      noRecent: '되돌릴 수 있는 정리 내역이 이곳에 표시됩니다.',
       recentRow: '항목 {count}개 · {size}',
       toolchainTitle: '재설치가 필요한 항목이 포함되어 있습니다',
       toolchainMessage: '다음 항목은 자동으로 재생성되지 않습니다. 정리한 후에는 다시 다운로드하거나 설정해야 합니다.',
@@ -171,7 +171,7 @@ module.exports = {
     },
 
     apps: {
-      subtitle: '앱을 삭제할 때 앱이 남긴 설정, 캐시, 데이터 파일도 함께 정리합니다. 모든 항목은 휴지통으로 이동되며, 되돌려 놓을 수 있습니다.',
+      subtitle: '앱을 삭제할 때 앱이 남긴 설정, 캐시, 데이터 파일도 함께 정리합니다. 모든 항목은 휴지통으로 이동되며, 되돌릴 수 있습니다.',
       search: '검색',
       count: '앱 {count}개',
       noMatch: '검색 결과가 없습니다.',
@@ -182,10 +182,10 @@ module.exports = {
       nothingSelected: '삭제할 앱을 선택하십시오',
       selection: '{count}개 선택됨',
       recent: '최근 삭제 내역',
-      noRecent: '삭제한 앱이 이곳에 표시되며, 원래 위치로 되돌려 놓을 수 있습니다.',
-      putBack: '되돌려 놓기',
+      noRecent: '삭제한 앱이 이곳에 표시되며, 원래 위치로 되돌릴 수 있습니다.',
+      putBack: '되돌리기',
       confirmTitle: '휴지통으로 이동하시겠습니까?',
-      confirmMessage: '다음 항목이 휴지통으로 이동됩니다. 최근 삭제 내역에서 되돌려 놓을 수 있습니다.',
+      confirmMessage: '다음 항목이 휴지통으로 이동됩니다. 최근 삭제 내역에서 되돌릴 수 있습니다.',
       nameOnly: '이름만 일치',
       totalSize: '전체 크기: {size}',
     },
@@ -259,8 +259,8 @@ module.exports = {
     reclaimed: '확보한 공간',
     removed: '정리한 위치',
     failed: '실패',
-    restorable: '휴지통으로 이동되었으므로 되돌려 놓을 수 있습니다.',
-    restored: '되돌려 놓은 항목',
+    restorable: '휴지통으로 이동되었으므로 되돌릴 수 있습니다.',
+    restored: '되돌린 항목',
     appsRemoved: '삭제한 앱',
     running: '실행 중',
     lidCloses: '디스플레이를 닫을 때',
@@ -282,7 +282,7 @@ module.exports = {
   error: {
     NEEDS_CONFIRM: {
       message: '실행하기 전에 다음 항목을 확인하십시오.',
-      hint: '휴지통으로 이동되므로 나중에 되돌려 놓을 수 있습니다.',
+      hint: '휴지통으로 이동되므로 나중에 되돌릴 수 있습니다.',
     },
     NEEDS_ACKNOWLEDGEMENT: {
       message: '선택한 항목 중 재설치가 필요한 항목이 포함되어 있습니다.',
@@ -477,12 +477,12 @@ module.exports = {
     },
 
     'disk.restore': {
-      title: '정리 항목 되돌려 놓기',
-      summary: '정리 시 휴지통으로 이동한 항목을 원래 위치로 되돌려 놓기',
+      title: '정리 항목 되돌리기',
+      summary: '정리 시 휴지통으로 이동한 항목을 원래 위치로 되돌리기',
       whenToUse:
-        '정리한 항목을 원래 위치로 되돌려 놓을 때 사용합니다. 해당 정리 작업의 실행 번호가 필요합니다.',
+        '정리한 항목을 원래 위치로 되돌릴 때 사용합니다. 해당 정리 작업의 실행 번호가 필요합니다.',
       input: {
-        run: { label: '실행 번호', description: '되돌려 놓을 정리 작업의 실행 번호입니다.' },
+        run: { label: '실행 번호', description: '되돌릴 정리 작업의 실행 번호입니다.' },
       },
     },
 
@@ -535,7 +535,7 @@ module.exports = {
       title: '앱 삭제',
       summary: '앱과 앱이 남긴 설정, 캐시, 데이터를 휴지통으로 이동',
       whenToUse:
-        '앱을 관련 파일까지 모두 삭제할 때 사용합니다. 삭제 전에 함께 삭제될 파일 목록이 표시되며, 휴지통으로 이동되므로 되돌려 놓을 수 있습니다.',
+        '앱을 관련 파일까지 모두 삭제할 때 사용합니다. 삭제 전에 함께 삭제될 파일 목록이 표시되며, 휴지통으로 이동되므로 되돌릴 수 있습니다.',
       input: {
         apps: { label: '삭제할 앱', description: '삭제할 앱을 지정합니다.' },
         keepData: { label: '데이터 유지', description: '앱만 삭제하고 설정 및 데이터는 유지합니다.' },
@@ -543,11 +543,11 @@ module.exports = {
     },
 
     'apps.restore': {
-      title: '삭제한 앱 되돌려 놓기',
-      summary: '앱 삭제 시 휴지통으로 이동한 앱과 파일을 원래 위치로 되돌려 놓기',
-      whenToUse: '삭제한 앱을 원래 위치로 되돌려 놓을 때 사용합니다. 해당 삭제 작업의 실행 번호가 필요합니다.',
+      title: '삭제한 앱 되돌리기',
+      summary: '앱 삭제 시 휴지통으로 이동한 앱과 파일을 원래 위치로 되돌리기',
+      whenToUse: '삭제한 앱을 원래 위치로 되돌릴 때 사용합니다. 해당 삭제 작업의 실행 번호가 필요합니다.',
       input: {
-        run: { label: '실행 번호', description: '되돌려 놓을 앱 삭제 작업의 실행 번호입니다.' },
+        run: { label: '실행 번호', description: '되돌릴 앱 삭제 작업의 실행 번호입니다.' },
       },
     },
   },

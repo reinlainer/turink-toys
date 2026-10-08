@@ -64,7 +64,12 @@ svg{display:block;width:${size}px;height:${size}px}</style>${svg}`;
   await new Promise((resolve) => setTimeout(resolve, 160));
   const image = await target.webContents.capturePage();
   fs.rmSync(temp, { force: true });
-  return image.toPNG();
+  // On a Retina display the capture comes back in device pixels, twice the
+  // size asked for. A menu bar template drawn at that size shows at double
+  // height, so every image is brought back to the exact pixel size requested.
+  const { width } = image.getSize();
+  const exact = width === size ? image : image.resize({ width: size, height: size, quality: 'best' });
+  return exact.toPNG();
 }
 
 async function main() {
