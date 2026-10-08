@@ -1,13 +1,13 @@
 {
   "name": "@turink/cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Command line front end for turink-toys",
   "license": "MIT",
   "bin": {
     "turink-toys": "src/main.js"
   },
   "dependencies": {
-    "@turink/core": "0.2.0"
+    "@turink/core": "0.2.1"
   },
   "files": [
     "src",

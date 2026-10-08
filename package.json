@@ -1,6 +1,6 @@
 {
   "name": "turink-toys",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "macOS utilities that humans and AI agents drive through the same core",
   "license": "MIT",
