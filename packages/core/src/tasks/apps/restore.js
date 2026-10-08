@@ -9,11 +9,11 @@ const { row } = require('../../kernel/present');
 
 register(
   defineTask({
-    id: 'disk.restore',
-    title: 'Restore from Trash',
-    summary: 'Return items a previous cleanup moved to the Trash',
+    id: 'apps.restore',
+    title: 'Restore applications',
+    summary: 'Return applications and their files that a previous removal moved to the Trash',
     whenToUse:
-      'Undoing a disk.clean run whose result is still in the Trash. Needs the run identifier that the cleanup reported.',
+      'Undoing an apps.uninstall run whose result is still in the Trash. Needs the run identifier that the removal reported.',
     risk: 'create',
     cost: 'proportional',
     idempotent: false,
@@ -26,10 +26,8 @@ register(
           label: 'Run identifier',
           type: 'string',
           positional: true,
-          description: 'Which cleanup to undo.',
-          // Recent runs rather than a task, since what can be restored is a
-          // matter of history rather than of configuration.
-          optionsFrom: { runs: 'disk.clean' },
+          description: 'Which removal to undo.',
+          optionsFrom: { runs: 'apps.uninstall' },
         },
       },
     },
@@ -41,8 +39,8 @@ register(
     },
     examples: [
       {
-        description: 'Undo the cleanup recorded under a run identifier',
-        command: 'turink-toys disk.restore 0mtcgh29y6f9826232b --json',
+        description: 'Undo the removal recorded under a run identifier',
+        command: 'turink-toys apps.restore 0mtcgh29y6f9826232b --json',
       },
     ],
     present(result, t) {
@@ -59,34 +57,23 @@ register(
 
     async execute(run, input) {
       const events = journal.read(input.run);
-      if (!events) {
-        fail('SRC_NOT_FOUND', `There is no run recorded under "${input.run}".`, {
-          hint: 'Run "turink-toys runs list --json" to find the identifier.',
+      const start = events && events.find((e) => e.event === 'run.start');
+      if (!start || start.task !== 'apps.uninstall') {
+        fail('SRC_NOT_FOUND', `There is no application removal recorded under "${input.run}".`, {
+          hint: 'Run "turink-toys runs list --json" to find the identifier of an apps.uninstall run.',
         });
       }
 
       const end = events.find((e) => e.event === 'run.end');
       const trashed = end?.result?.trashed ?? [];
-
       if (trashed.length === 0) {
         fail('SRC_NOT_FOUND', `Run "${input.run}" moved nothing to the Trash.`, {
-          hint: 'Only a disk.clean run without --permanent can be restored.',
-        });
-      }
-      if (end.result.permanent) {
-        fail('SRC_NOT_FOUND', `Run "${input.run}" deleted permanently and cannot be undone.`, {
-          hint: 'Permanent deletions leave nothing in the Trash to return.',
+          hint: 'Only a removal that was confirmed and completed can be restored.',
         });
       }
 
       const { restored, failed } = await restoreItems(run, trashed);
-
-      return {
-        sourceRun: input.run,
-        restored,
-        failed,
-        partial: failed.length > 0,
-      };
+      return { sourceRun: input.run, restored, failed, partial: failed.length > 0 };
     },
   })
 );

@@ -36,7 +36,7 @@
     zone.addEventListener('drop', (event) => {
       event.preventDefault();
       zone.classList.remove('over');
-      const dropped = [...event.dataTransfer.files].map((file) => file.path).filter(Boolean);
+      const dropped = [...event.dataTransfer.files].map((file) => window.turink.pathForFile(file)).filter(Boolean);
       if (dropped.length === 0) return;
       state[name] = rule.type === 'array' ? dropped : [dropped[0]];
       render();
@@ -44,7 +44,7 @@
     });
 
     const row = el('div', 'path-field');
-    const choose = el('button', 'ghost-button', strings.choose);
+    const choose = el('button', 'button', strings.choose);
     choose.type = 'button';
     choose.addEventListener('click', async () => {
       const picked = await window.turink.pickPaths(false);
@@ -53,7 +53,7 @@
       render();
       onChange();
     });
-    const clear = el('button', 'ghost-button', strings.clear);
+    const clear = el('button', 'button', strings.clear);
     clear.type = 'button';
     clear.addEventListener('click', () => {
       state[name] = [];

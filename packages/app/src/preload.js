@@ -1,6 +1,6 @@
 'use strict';
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 // The renderer reaches the core only through these calls. Keeping node out of
 // the page means a rendering bug cannot become filesystem access.
@@ -9,6 +9,12 @@ contextBridge.exposeInMainWorld('turink', {
   strings: () => ipcRenderer.invoke('i18n:strings'),
   setLocale: (locale) => ipcRenderer.invoke('i18n:set', locale),
   runTask: (taskId, input, confirm) => ipcRenderer.invoke('task:run', { taskId, input, confirm }),
+  peekTask: (taskId, input) => ipcRenderer.invoke('task:peek', { taskId, input }),
+  runElevated: (taskId, input) => ipcRenderer.invoke('task:runElevated', { taskId, input }),
+  listUndoable: (taskId) => ipcRenderer.invoke('runs:undoable', taskId),
+  appIcon: (appPath) => ipcRenderer.invoke('apps:icon', appPath),
+  // Electron no longer puts a path on a dropped File, so it is asked for here.
+  pathForFile: (file) => webUtils.getPathForFile(file),
   pickPaths: (directory) => ipcRenderer.invoke('dialog:pick', { directory }),
   loadOptions: (source) => ipcRenderer.invoke('options:load', source),
   rememberTask: (taskId) => ipcRenderer.invoke('settings:lastTask', taskId),

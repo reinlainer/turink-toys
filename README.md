@@ -48,6 +48,9 @@ application in place.
 | `power.status` | Report the current sleep and lid settings |
 | `power.lid` | Choose whether closing the lid puts the machine to sleep |
 | `power.keep-awake` | Suppress idle sleep for a set number of minutes |
+| `apps.list` | List installed applications that can be removed |
+| `apps.uninstall` | Move an application and the files it left in the Library to the Trash |
+| `apps.restore` | Return applications a previous removal moved to the Trash |
 
 ### The archive problem
 
@@ -153,7 +156,22 @@ Tasks declare a risk level that determines what happens before they run.
 | `destroy` | Requires a confirmed plan hash and moves to the Trash rather than deleting |
 
 Path validation lives in one place in the core, so no front end can reach a task
-without passing it. Deletion is confined to the home directory.
+without passing it. Deletion is confined to the home directory, with one
+exception: an application bundle inside `/Applications` or `~/Applications`.
+
+`apps.uninstall` removes an application together with the files named after its
+bundle identifier under `~/Library`. A folder that only shares the application's
+name is included but marked as such in the plan, and Group Containers are left
+alone because a vendor's applications share them. Applications protected by
+System Integrity Protection, this tool itself and anything running are refused.
+Finder asks for an administrator password itself when the bundle belongs to
+another user.
+
+Every move into or out of the Trash goes through Finder, because an ordinary
+process may not read the Trash. macOS asks once to allow this tool to control
+Finder; refusing returns exit code 4 and affects nothing else. The Trash renames
+an item whose name is taken, so a run records the name Finder reports, and a
+restore puts the item back under its original name.
 
 Cleanup locations are classified by what they hold rather than by whether
 removing them is permitted. A `cache` is rebuilt automatically by the tool that
@@ -194,20 +212,28 @@ npm install
 npm run app
 ```
 
-The window lists every task on the left, generates its input form from the task
-manifest, and streams events into a console at the bottom. A field whose values
-come from a fixed set says so in the schema, and the form opens a picker for it
-rather than asking anyone to recall an identifier. The command shown
-beside the Run button reproduces the same work in a terminal, which is how a
-run started by hand becomes something to paste into a script or hand to an
-agent.
+The window has one screen per area rather than one per task:
+
+| Screen | Tasks it brings together |
+|:---|:---|
+| Archive | Drop files to compress them; drop zip files to extract or check them. Checking runs `archive.inspect` and `archive.verify` together |
+| Disk Cleanup | `disk.targets` and `disk.report` as one sized list, `disk.clean` on the selection, and `disk.restore` from the list of recent cleanups |
+| Applications | `apps.list` with icons and search, `apps.uninstall` on the selection, and `apps.restore` from the list of recent removals |
+| Power | `power.status` as a summary, with `power.keep-awake` and `power.lid` as two settings. The lid setting runs under the macOS administrator prompt |
+
+The tasks themselves stay separate, because that is the contract the command
+line and agents call. A task no screen covers yet appears under More with a form
+generated from its manifest, so a new task is reachable from the window before
+anyone designs a screen for it. Each action has a button that copies the same
+work as a terminal command, to paste into a script or hand to an agent.
 
 A menu bar item carries the current lid setting, anything still running, and a
 shortcut to compress a selection.
 
-The console also shows runs this window did not start. A task invoked from the
-terminal or from a Finder quick action writes to the same journal, and the app
-tails that directory, so an agent working in the background stays visible.
+The Activity panel, closed by default, shows runs as they happen, including
+ones this window did not start. A task invoked from the terminal or from a
+Finder quick action writes to the same journal, and the app tails that
+directory, so an agent working in the background stays visible.
 
 ## Language
 

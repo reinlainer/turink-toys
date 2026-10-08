@@ -23,7 +23,10 @@ function resolveGlob(target) {
     .map((name) => path.join(target.path, name));
 }
 
-function directorySize(root) {
+// Logical size is what disk.report has always shown. Allocated size counts the
+// blocks a file actually occupies, which is what removing it frees; the two
+// differ for sparse files such as a virtual machine disk.
+function directorySize(root, { allocated = false } = {}) {
   let total = 0;
   let files = 0;
   const stack = [root];
@@ -43,7 +46,8 @@ function directorySize(root) {
         stack.push(full);
       } else if (entry.isFile()) {
         try {
-          total += fs.statSync(full).size;
+          const stat = fs.statSync(full);
+          total += allocated ? stat.blocks * 512 : stat.size;
           files += 1;
         } catch {
           // A file removed mid-scan needs no handling.

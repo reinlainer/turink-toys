@@ -25,6 +25,9 @@
 
         cancel.textContent = strings().cancel;
         accept.textContent = options.accept || strings().proceed;
+        // Destructive confirmations get the warning colour; everything else
+        // keeps the ordinary primary button.
+        accept.className = `button ${options.tone === 'danger' ? 'danger' : 'primary'}`;
         root.hidden = false;
         accept.focus();
 
@@ -61,9 +64,9 @@
 
       if (multiple) {
         const bar = el('div', 'options-bar');
-        const all = el('button', 'ghost-button small', s.selectAll);
+        const all = el('button', 'button small', s.selectAll);
         all.type = 'button';
-        const none = el('button', 'ghost-button small', s.selectNone);
+        const none = el('button', 'button small', s.selectNone);
         none.type = 'button';
         bar.append(all, none);
         container.appendChild(bar);

@@ -27,4 +27,33 @@ function assertUnderHome(target) {
   return resolved;
 }
 
-module.exports = { dirs, HOME, assertUnderHome };
+// Applications are the one thing this tool removes from outside the home
+// directory. The exception is kept to an application bundle sitting in an
+// applications folder, or one folder down where vendors group their suites, so
+// a wrong path can never widen it to the folder itself or to anything else.
+const APP_ROOTS = ['/Applications', path.join(HOME, 'Applications')];
+
+function assertAppBundle(target) {
+  const fs = require('fs');
+  const { fail } = require('./errors');
+  const resolved = path.resolve(target);
+
+  const root = APP_ROOTS.find((r) => resolved.startsWith(r + path.sep));
+  const depth = root ? path.relative(root, resolved).split(path.sep).length : 0;
+  let isBundle = false;
+  try {
+    const stat = fs.lstatSync(resolved);
+    isBundle = stat.isDirectory() && !stat.isSymbolicLink();
+  } catch {
+    // A path that does not exist is refused below like any other.
+  }
+
+  if (!root || depth > 2 || !resolved.endsWith('.app') || !isBundle) {
+    fail('OUTSIDE_HOME', `Refusing to touch a path that is not an installed application: ${resolved}`, {
+      hint: 'Only application bundles inside /Applications or ~/Applications are eligible.',
+    });
+  }
+  return resolved;
+}
+
+module.exports = { dirs, HOME, APP_ROOTS, assertUnderHome, assertAppBundle };

@@ -13,6 +13,9 @@ require('./tasks/disk/restore');
 require('./tasks/power/status');
 require('./tasks/power/lid');
 require('./tasks/power/keep-awake');
+require('./tasks/apps/list');
+require('./tasks/apps/uninstall');
+require('./tasks/apps/restore');
 
 module.exports = {
   registry: require('./kernel/registry'),

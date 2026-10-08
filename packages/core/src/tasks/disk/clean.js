@@ -1,28 +1,20 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
-const { execFile } = require('child_process');
-const { promisify } = require('util');
 const { defineTask } = require('../../kernel/manifest');
 const { register } = require('../../kernel/registry');
 const { fail } = require('../../kernel/errors');
 const { assertUnderHome } = require('../../kernel/paths');
+const { moveToTrash } = require('../../kernel/trash');
 const catalog = require('./catalog');
 const { scan, formatBytes } = require('./scan');
 const { resolveTargets } = require('./report');
 const { row } = require('../../kernel/present');
 
-const exec = promisify(execFile);
-
 // Deleting goes to the Trash rather than removing outright, which is what makes
-// disk.restore possible. macOS ships /usr/bin/trash, and because the Trash sits
-// on the same volume the move is a rename and stays fast regardless of size.
-const TRASH = '/usr/bin/trash';
-
-async function moveToTrash(target) {
-  await exec(TRASH, [target]);
-}
+// disk.restore possible. The move goes through Finder, which reports the name
+// the item ends up with in the Trash; because the Trash sits on the same volume
+// the move is a rename and stays fast regardless of size.
 
 async function removePermanently(target) {
   await fs.promises.rm(target, { recursive: true, force: true });
@@ -44,6 +36,7 @@ register(
       'NEEDS_CONFIRM',
       'PLAN_MISMATCH',
       'OUTSIDE_HOME',
+      'NEEDS_PRIVILEGE',
       'LOCKED',
       'PARTIAL',
     ],
@@ -191,26 +184,33 @@ register(
 
       for (const [index, item] of plan.items.entries()) {
         run.progress(index + 1, plan.items.length, item.path, 'path');
-        try {
-          if (input.permanent) {
+        let outcome;
+        if (input.permanent) {
+          try {
             await removePermanently(item.path);
-          } else {
-            await moveToTrash(item.path);
+            outcome = { ok: true, trashName: null };
+          } catch (err) {
+            outcome = { ok: false, reason: err.message };
           }
-          // The Trash renames on collision, so the mapping from the original
-          // location to the name inside the Trash is recorded here. disk.restore
-          // reads it back rather than relying on Finder's put-back.
+        } else {
+          outcome = await moveToTrash(item.path);
+        }
+
+        if (outcome.ok) {
+          // The Trash renames on collision, and a target cleared twice leaves
+          // two items of the same name there. Recording the name Finder reported
+          // is what lets disk.restore pick the item from this run.
           trashed.push({
             slug: item.slug,
             from: item.path,
-            trashName: path.basename(item.path),
+            trashName: outcome.trashName,
             bytes: item.bytes,
             permanent: input.permanent === true,
           });
           freed += item.bytes;
-        } catch (err) {
-          failed.push({ path: item.path, reason: err.message });
-          run.warn('REMOVE_FAILED', { path: item.path, reason: err.message });
+        } else {
+          failed.push({ path: item.path, reason: outcome.reason });
+          run.warn('REMOVE_FAILED', { path: item.path, reason: outcome.reason });
         }
       }
 

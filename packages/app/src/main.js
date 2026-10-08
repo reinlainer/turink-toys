@@ -1,11 +1,12 @@
 'use strict';
 
 const path = require('path');
-const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, nativeImage, nativeTheme } = require('electron');
 const core = require('@turink/core');
 const watcher = require('./watcher');
 const appMenu = require('./menu');
 const updates = require('./updates');
+const UI_STRINGS = require('./strings');
 
 const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
 
@@ -15,6 +16,9 @@ const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
 const VERSION = require('../package.json').version;
 
 const { registry, execute, journal, errors, i18n, settings, present } = core;
+const { validateInput } = require('@turink/core/src/kernel/manifest');
+const { execFile } = require('child_process');
+const execFileAsync = require('util').promisify(execFile);
 
 // The identifier and the executable stay hyphenated because a command is typed
 // and a bundle is addressed by it. What a person reads is written out in full.
@@ -47,10 +51,11 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1120,
     height: 760,
-    minWidth: 880,
-    minHeight: 560,
+    minWidth: 820,
+    minHeight: 580,
     titleBarStyle: 'hiddenInset',
-    backgroundColor: '#f5f7f7',
+    // Matches the page's own window colour so no flash shows before it paints.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#17191c' : '#f4f5f7',
     icon: path.join(ASSETS, 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -255,41 +260,21 @@ ipcMain.handle('i18n:set', (event, next) => {
   return { locale, ui: buildUiStrings(), tasks: taskPayload() };
 });
 
+// Mirrors the English tree with each leaf resolved in the active locale.
+function localizeTree(node, prefix) {
+  const out = {};
+  for (const [key, value] of Object.entries(node)) {
+    const path = `${prefix}.${key}`;
+    out[key] = typeof value === 'string' ? i18n.t(locale, path, value) : localizeTree(value, path);
+  }
+  return out;
+}
+
 // The window renders no English literals of its own. Every label it draws comes
 // from here, so adding a language is a locale file rather than a sweep through
 // the markup.
 function buildUiStrings() {
-  const keys = [
-    'run', 'runDestructive', 'running', 'cancel', 'proceed', 'choose', 'clear',
-    'copyCommand', 'copied', 'recentRuns', 'console', 'rawEvents', 'dropHint',
-    'consoleEmpty', 'external', 'revealInFinder', 'resultTitle', 'language',
-    'noRuns', 'selectTask', 'itemsMore', 'selectedCount',
-    'selectAll', 'selectNone', 'noOptions', 'kindCache', 'kindToolchain', 'pickNone',
-  ];
-  const english = {
-    run: 'Run', runDestructive: 'Review and run', running: 'Running', cancel: 'Cancel',
-    proceed: 'Continue', choose: 'Choose', clear: 'Clear', copyCommand: 'Copy command',
-    copied: 'Copied', recentRuns: 'Recent runs', console: 'Console', rawEvents: 'Raw events',
-    dropHint: 'Drop items here, or use Choose.',
-    consoleEmpty: 'Runs appear here, including ones started from a terminal or a Finder quick action.',
-    external: 'external', revealInFinder: 'Show in Finder', resultTitle: 'Done',
-    language: 'Language', noRuns: 'No runs recorded.', selectTask: 'Select a task on the left.',
-    itemsMore: 'and {count} more', selectedCount: '{count} selected',
-    selectAll: 'Select all', selectNone: 'Clear selection',
-    noOptions: 'Nothing available to choose.', pickNone: 'Nothing selected',
-    kindCache: 'rebuilt automatically', kindToolchain: 'needs reinstalling',
-  };
-  const ui = {};
-  for (const key of keys) ui[key] = i18n.t(locale, `ui.${key}`, english[key]);
-
-  ui.risk = {};
-  for (const value of ['read', 'create', 'mutate', 'destroy']) {
-    ui.risk[value] = i18n.t(locale, `ui.riskLabel.${value}`, value);
-  }
-  ui.cost = {};
-  for (const value of ['instant', 'cheap', 'proportional', 'expensive']) {
-    ui.cost[value] = i18n.t(locale, `ui.costLabel.${value}`, value);
-  }
+  const ui = localizeTree(UI_STRINGS, 'ui');
 
   ui.domain = {};
   for (const domain of new Set(registry.all().map((task) => task.domain))) {
@@ -421,7 +406,133 @@ ipcMain.handle('shell:external', (event, url) => {
   if (url === HOMEPAGE || url === SOURCE) shell.openExternal(url);
 });
 
+// Reading state a screen shows, such as the application list or the power
+// settings, is not something a person did, so it leaves no journal entry. The
+// core only honours this for read-only tasks.
+ipcMain.handle('task:peek', async (event, { taskId, input }) => {
+  try {
+    const outcome = await execute.runTask(taskId, input || {}, { source: 'app', ephemeral: true });
+    return { ok: true, ...outcome };
+  } catch (err) {
+    const payload = err instanceof errors.TaskError ? err.toJSON() : { code: 'FAILED', message: err.message };
+    return { ok: false, error: i18n.localizeError(payload, locale) };
+  }
+});
+
 ipcMain.handle('runs:list', () => journal.list({ limit: 30 }));
+
+// The task that undoes each undoable one.
+const UNDO_TASK = { 'disk.clean': 'disk.restore', 'apps.uninstall': 'apps.restore' };
+
+function runResult(runId) {
+  const end = (journal.read(runId) || []).find((e) => e.event === 'run.end');
+  return end && end.result;
+}
+
+// Completed runs of a task whose result can still be undone, newest first, with
+// what a list row needs to describe them. A run already put back by a later
+// restore is left out, so the list only offers what is still in the Trash.
+ipcMain.handle('runs:undoable', (event, taskId) => {
+  const runs = journal.list({ limit: 80 });
+  const undone = new Set(
+    runs
+      .filter((run) => run.task === UNDO_TASK[taskId] && run.status === 'ok')
+      .map((run) => (runResult(run.run) || {}).sourceRun)
+      .filter(Boolean)
+  );
+  return runs
+    .filter((run) => run.task === taskId && (run.status === 'ok' || run.status === 'partial'))
+    .filter((run) => !undone.has(run.run))
+    .map((run) => {
+      const result = runResult(run.run);
+      if (!result || !result.restorable) return null;
+      return {
+        run: run.run,
+        startedAt: run.startedAt,
+        count: (result.trashed || []).length,
+        bytes: result.freedBytes || 0,
+        apps: result.apps || null,
+        names: (result.trashed || []).map((item) => item.slug || item.app).filter(Boolean),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+});
+
+const iconCache = new Map();
+ipcMain.handle('apps:icon', async (event, appPath) => {
+  if (typeof appPath !== 'string' || !appPath.endsWith('.app')) return null;
+  if (iconCache.has(appPath)) return iconCache.get(appPath);
+  try {
+    // The Quick Look thumbnail of a bundle is its own icon. app.getFileIcon
+    // returns the generic application icon for every bundle, and its 'large'
+    // size crashes Electron 44. 64 pixels is the 32-point row at 2x.
+    const image = await nativeImage.createThumbnailFromPath(appPath, { width: 64, height: 64 });
+    const url = image.isEmpty() ? null : image.toDataURL();
+    iconCache.set(appPath, url);
+    return url;
+  } catch {
+    return null;
+  }
+});
+
+// The few tasks that change system settings need root. The window cannot host
+// sudo, so the command line runs under macOS's own administrator prompt. Only
+// tasks listed here can go this way, and their input is validated against the
+// manifest before anything is put on a command line.
+const ELEVATED = new Set(['power.lid']);
+
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'\\''`)}'`;
+}
+
+ipcMain.handle('task:runElevated', async (event, { taskId, input }) => {
+  const task = registry.get(taskId);
+  const t = (key, fallback, params) => i18n.t(locale, key, fallback, params);
+  if (!ELEVATED.has(taskId)) {
+    return { ok: false, error: { code: 'FAILED', message: `${taskId} does not run with administrator rights.` } };
+  }
+
+  let checked;
+  try {
+    checked = validateInput(task, input || {});
+  } catch (err) {
+    return { ok: false, error: i18n.localizeError(err.toJSON ? err.toJSON() : { code: 'FAILED', message: err.message }, locale) };
+  }
+
+  const args = [taskId];
+  for (const [name, value] of Object.entries(checked)) {
+    args.push(`--${name.replace(/[A-Z]/g, (ch) => '-' + ch.toLowerCase())}=${value}`);
+  }
+  args.push('--json');
+
+  const cli = path.join(__dirname, '..', '..', 'cli', 'src', 'main.js');
+  const command = `ELECTRON_RUN_AS_NODE=1 ${[process.execPath, cli, ...args].map(shellQuote).join(' ')}`;
+  const script = `do shell script "${command.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}" with administrator privileges`;
+
+  try {
+    const { stdout } = await execFileAsync('/usr/bin/osascript', ['-e', script]);
+    const line = stdout.trim().split('\n').pop();
+    const outcome = JSON.parse(line);
+    refreshTray();
+    if (outcome.status === 'error' || outcome.error) {
+      return { ok: false, error: i18n.localizeError(outcome.error, locale) };
+    }
+    return { ok: true, ...outcome, shown: present.present(task, outcome.result, t) };
+  } catch (err) {
+    const message = String(err.stderr || err.message);
+    if (message.includes('-128')) return { ok: false, cancelled: true };
+    // A failed run still prints its JSON before exiting non-zero.
+    const line = String(err.stdout || '').trim().split('\n').pop();
+    try {
+      const outcome = JSON.parse(line);
+      if (outcome.error) return { ok: false, error: i18n.localizeError(outcome.error, locale) };
+    } catch {
+      // Not JSON; report the raw message below.
+    }
+    return { ok: false, error: { code: 'FAILED', message: message.trim() } };
+  }
+});
 ipcMain.handle('settings:lastTask', (event, taskId) => {
   if (taskId) settings.set('lastTask', taskId);
   return settings.get('lastTask', null);

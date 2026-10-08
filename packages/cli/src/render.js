@@ -32,7 +32,9 @@ function renderResult(shown) {
 function renderPlan(plan) {
   const lines = [`${plan.summary}`];
   for (const item of plan.items.slice(0, 10)) {
-    lines.push(`  ${item.path}${item.bytes ? `  (${formatBytes(item.bytes)})` : ''}`);
+    const size = item.bytes ? `  (${formatBytes(item.bytes)})` : '';
+    const basis = item.basis === 'name' ? '  [matched by name only]' : '';
+    lines.push(`  ${item.path}${size}${basis}`);
   }
   if (plan.items.length > 10) lines.push(`  … ${plan.items.length - 10} more`);
   return lines.join('\n');
