@@ -10,6 +10,7 @@
 ## 2. 주요 현안과 확인 사항 (Issues & Blockers)
 | 발생일 | 관련 작업 | 현안 요약 | 사용자 확인 필요 사항 |
 |:---|:---|:---|:---|
+| 2026-10-08 | `task-completed/20261008-release-0-2-0.md` | 0.2.0 릴리즈 | 버전·의존 버전을 0.2.0 으로 올리고 `v0.2.0` 태그 push. 릴리즈 워크플로 성공, 게시 파일과 캐스크 체크섬 일치 |
 | 2026-10-08 | `task-completed/20261008-ui-consolidation.md` | 앱 창의 덮개 설정(관리자 암호 창 경로)은 실행 검증 전 | 실제로 한 번 켜고 끄며 확인 |
 
 ## 3. 대기 작업 (Backlog)
@@ -23,4 +24,3 @@
 |:---|:---|:---|:---|
 | 2026-10-08 | `task-completed/20261008-ui-consolidation.md` | 앱 창 화면 통폐합과 UI 개선 | 메뉴 14개를 화면 4개로 통합, 디자인 전면 개편, 한·영 문구 교정, 덮개 설정·끌어다 놓기 결함 수정 |
 | 2026-10-08 | `task-completed/20261008-disk-clean-trash-name.md` | `disk.clean` 휴지통 이름 기록 | Finder 경유로 실제 휴지통 이름 기록. 같은 이름 두 번 정리 후 각각 정확히 복구됨을 실검증. 설치본 재빌드 |
-| 2026-10-08 | - | 이 맥의 설치본을 개발 빌드로 교체 | Homebrew 릴리스 0.1.0 제거. 현재 소스로 만든 `Turink Toys-dev.app`(`toys.turink.app.dev`)을 `/Applications` 에 설치하고 CLI를 `~/.local/bin/turink-toys` 에 연결, Finder 빠른 동작 재연결 |
