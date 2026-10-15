@@ -167,11 +167,15 @@ System Integrity Protection, this tool itself and anything running are refused.
 Finder asks for an administrator password itself when the bundle belongs to
 another user.
 
-Every move into or out of the Trash goes through Finder, because an ordinary
-process may not read the Trash. macOS asks once to allow this tool to control
-Finder; refusing returns exit code 4 and affects nothing else. The Trash renames
-an item whose name is taken, so a run records the name Finder reports, and a
-restore puts the item back under its original name.
+Items under the home directory move into the Trash with `/usr/bin/trash` and
+back out by their exact path. Applications move through Finder, which raises
+the administrator prompt for a bundle another user owns; macOS asks once to
+allow this tool to control Finder. Each route falls back to the other when it is
+refused: Finder's scripted moves are denied for some items, such as another
+app's sandbox container under `~/Library/Containers`. The Trash renames an item
+whose name is taken, so a run records the name the item actually received, and
+a restore puts it back under its original name without replacing anything that
+has appeared there since.
 
 Cleanup locations are classified by what they hold rather than by whether
 removing them is permitted. A `cache` is rebuilt automatically by the tool that

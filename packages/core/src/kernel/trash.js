@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
@@ -7,16 +9,27 @@ const { fail } = require('./errors');
 
 const exec = promisify(execFile);
 const OSASCRIPT = '/usr/bin/osascript';
+const TRASH_TOOL = '/usr/bin/trash';
+const HOME = path.resolve(os.homedir());
+const HOME_TRASH = path.join(HOME, '.Trash');
 
-// The Trash is covered by macOS privacy protection, so an ordinary process can
-// put items in but cannot list or read what is there. Moving in and out
-// therefore goes through Finder, which holds the necessary access. macOS asks
-// the user once to allow this tool to control Finder, and refusing leaves
-// these operations unavailable without affecting anything else.
+// Two routes into and out of the Trash, chosen by where an item lives.
 //
-// Finder also raises the administrator prompt itself when an item belongs to
-// another user, as applications installed from a package or the App Store do,
-// so nothing here needs elevated rights of its own.
+// Items under the home directory move directly: /usr/bin/trash puts them in
+// and reports the name each one ended up with, and a known name can be moved
+// back out by its exact path. Finder is not used for them because macOS
+// refuses Finder's scripted moves on some of them, such as another app's
+// sandbox container under ~/Library/Containers, and only after a fifteen
+// second wait.
+//
+// Applications move through Finder, which raises the administrator prompt
+// itself when a bundle belongs to another user, as applications installed from
+// a package or the App Store do. Each route falls back to the other when it is
+// refused, so an item is only reported as failed when neither could move it.
+
+function underHome(target) {
+  return path.resolve(target).startsWith(HOME + path.sep);
+}
 
 // The path travels as an argument rather than inside the script text, so a
 // name containing quotes cannot change what the script does. Converting it to
@@ -64,9 +77,9 @@ function failNotAuthorized(action) {
 }
 
 // The Trash renames an item whose name is already taken, and items gathered
-// from different folders often share a name. The name Finder reports back is
+// from different folders often share a name. The name each route reports is
 // therefore what gets recorded, so a later restore picks the right item.
-async function moveToTrash(target) {
+async function finderDelete(target) {
   try {
     const { stdout } = await exec(OSASCRIPT, ['-e', DELETE_SCRIPT, target]);
     return { ok: true, trashName: stdout.trim() };
@@ -79,7 +92,30 @@ async function moveToTrash(target) {
   }
 }
 
-async function restoreFromTrash(trashName, destination) {
+// /usr/bin/trash -v prints 'Moved "<from>" to "<to>"' for each item.
+async function directDelete(target) {
+  try {
+    const { stdout, stderr } = await exec(TRASH_TOOL, ['-v', target]);
+    const moved = `${stdout}\n${stderr}`.match(/Moved ".*" to "(.*)"\s*$/m);
+    if (moved) return { ok: true, trashName: path.basename(moved[1]) };
+    // Moved but unreported: the original name is the best record available,
+    // and trying Finder now would only fail on an item no longer there.
+    if (!fs.existsSync(target)) return { ok: true, trashName: path.basename(target) };
+    return { ok: false, reason: 'trash reported nothing and the item is still in place.' };
+  } catch (err) {
+    return { ok: false, reason: String(err.stderr || err.message).trim() };
+  }
+}
+
+async function moveToTrash(target) {
+  const [first, second] = underHome(target) ? [directDelete, finderDelete] : [finderDelete, directDelete];
+  const outcome = await first(target);
+  if (outcome.ok || !fs.existsSync(target)) return outcome;
+  const retry = await second(target);
+  return retry.ok ? retry : { ok: false, reason: `${outcome.reason} / ${retry.reason}` };
+}
+
+async function finderRestore(trashName, destination) {
   const destinationDir = path.dirname(destination);
   const originalName = path.basename(destination);
   try {
@@ -90,6 +126,28 @@ async function restoreFromTrash(trashName, destination) {
     if (denied(message)) failNotAuthorized('Restoring');
     return { ok: false, reason: message.trim() };
   }
+}
+
+// A rename replaces an existing file silently, so the destination is checked
+// first; something put there since the removal is never overwritten.
+function directRestore(trashName, destination) {
+  if (fs.existsSync(destination)) {
+    return { ok: false, reason: `"${path.basename(destination)}" already exists in ${path.dirname(destination)}.` };
+  }
+  try {
+    fs.renameSync(path.join(HOME_TRASH, trashName), destination);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+}
+
+async function restoreFromTrash(trashName, destination) {
+  if (!underHome(destination)) return finderRestore(trashName, destination);
+  const direct = directRestore(trashName, destination);
+  if (direct.ok || fs.existsSync(destination)) return direct;
+  const viaFinder = await finderRestore(trashName, destination);
+  return viaFinder.ok ? viaFinder : { ok: false, reason: `${direct.reason} / ${viaFinder.reason}` };
 }
 
 // Shared by every restore task. Each recorded item names where it came from

@@ -259,6 +259,7 @@ module.exports = {
     reclaimed: '확보한 공간',
     removed: '정리한 위치',
     failed: '실패',
+    notMoved: '이동하지 못한 항목',
     restorable: '휴지통으로 이동되었으므로 되돌릴 수 있습니다.',
     restored: '되돌린 항목',
     appsRemoved: '삭제한 앱',

@@ -153,7 +153,12 @@ register(
             ? row(t('result.failed', 'Failed'), String(result.failed.length), 'warn')
             : null,
         ].filter(Boolean),
-        notes: [result && result.restorable ? t('result.restorable', 'Moved to the Trash and can be restored.') : null],
+        // Each item left in place is named, so a partial run says what remains
+        // rather than only how many.
+        notes: [
+          result && result.restorable ? t('result.restorable', 'Moved to the Trash and can be restored.') : null,
+          ...((result && result.failed) || []).map((item) => `${t('result.notMoved', 'Not moved')}: ${item.path}`),
+        ],
       };
     },
 
