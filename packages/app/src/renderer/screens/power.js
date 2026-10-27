@@ -102,15 +102,35 @@
         return group;
       }
 
-      function settingCard(card, { title, body, warning, active, activeText, values, chosen, onPick, onStart, onStop }) {
+      function settingCard(card, { title, points, warning, active, activeText, values, chosen, onPick, onStart, onStop }) {
         card.textContent = '';
         card.classList.toggle('active', active);
         const head = el('div', 'setting-head');
         const text = el('div', 'setting-text');
         text.appendChild(el('h2', null, title));
-        text.appendChild(el('p', null, body));
+        // Points are one string with a line per item, because a translation
+        // only ever replaces strings and may need a different number of lines.
+        const lines = (points || '').split('\n').filter(Boolean);
+        if (lines.length > 0) {
+          const list = el('ul', 'setting-points');
+          for (const line of lines) list.appendChild(el('li', null, line));
+          text.appendChild(list);
+        }
         if (warning) text.appendChild(el('p', 'warning', warning));
         head.appendChild(text);
+
+        // The switch shows the state read back from the system, so a cancelled
+        // administrator prompt leaves it where it was once the status refreshes.
+        const toggle = el('input', 'switch');
+        toggle.type = 'checkbox';
+        toggle.setAttribute('role', 'switch');
+        toggle.setAttribute('aria-label', title);
+        toggle.checked = active;
+        toggle.addEventListener('change', async () => {
+          toggle.disabled = true;
+          await (toggle.checked ? onStart() : onStop());
+        });
+        head.appendChild(toggle);
         card.appendChild(head);
 
         const controls = el('div', 'setting-controls');
@@ -119,17 +139,9 @@
           status.appendChild(el('span', 'status-dot'));
           status.appendChild(el('span', null, activeText));
           controls.appendChild(status);
-          const stop = el('button', 'button', t().turnOff);
-          stop.type = 'button';
-          stop.addEventListener('click', onStop);
-          controls.appendChild(stop);
         } else {
           controls.appendChild(el('span', 'muted', t().duration));
           controls.appendChild(choices(values, chosen, onPick));
-          const start = el('button', 'button primary', t().turnOn);
-          start.type = 'button';
-          start.addEventListener('click', onStart);
-          controls.appendChild(start);
         }
         card.appendChild(controls);
       }
@@ -140,7 +152,7 @@
 
         settingCard(keepCard, {
           title: t().keepAwakeTitle,
-          body: t().keepAwakeBody,
+          points: t().keepAwakePoints,
           active: st.keepAwake.active,
           activeText: st.keepAwake.active && st.keepAwake.expiresAt ? format(t().keepAwakeActive, { time: clock(st.keepAwake.expiresAt) }) : '',
           values: KEEP_AWAKE_CHOICES,
@@ -161,7 +173,7 @@
 
         settingCard(lidCard, {
           title: t().lidTitle,
-          body: t().lidBody,
+          points: t().lidPoints,
           warning: t().lidWarning,
           active: st.lidSleepDisabled,
           activeText: st.lidRestoreAt ? format(t().lidActive, { time: clock(st.lidRestoreAt) }) : t().lidActiveNoRestore,

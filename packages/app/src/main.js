@@ -127,112 +127,15 @@ function loginItem() {
 function setLoginItem(enabled) {
   if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: enabled });
   const state = loginItem();
-  refreshTray();
   send('login:changed', state);
   return state;
 }
 
 // ---------------------------------------------------------------- tray
 
-async function powerSummary() {
-  try {
-    const outcome = await execute.runTask('power.status', {}, { source: 'app', ephemeral: true });
-    return outcome.result;
-  } catch {
-    return null;
-  }
-}
-
-async function buildTrayMenu() {
-  const status = await powerSummary();
-  const active = journal.list({ activeOnly: true, limit: 5 });
-  const login = loginItem();
-
-  const items = [];
-
-  if (active.length > 0) {
-    items.push({ label: 'Running', enabled: false });
-    for (const run of active) {
-      items.push({
-        label: `  ${run.task}`,
-        click: () => {
-          createWindow();
-          send('run:focus', run.run);
-        },
-      });
-    }
-    items.push({ type: 'separator' });
-  }
-
-  if (status) {
-    items.push({
-      label: status.lidSleepDisabled
-        ? i18n.t(locale, 'tray.lidAwake', 'Lid closed: staying awake')
-        : i18n.t(locale, 'tray.lidSleeps', 'Lid closed: sleeps normally'),
-      enabled: false,
-    });
-    if (status.keepAwake.active) {
-      items.push({
-        label: `  ${i18n.t(locale, 'tray.keepAwake', 'Idle sleep suppressed, {minutes} min left', {
-          minutes: status.keepAwake.minutesLeft,
-        })}`,
-        enabled: false,
-      });
-    }
-    items.push({ type: 'separator' });
-  }
-
-  if (updateAvailable) {
-    items.push(
-      {
-        label: i18n.t(locale, 'update.available', 'Version {version} is available', {
-          version: updateAvailable.version,
-        }),
-        click: () => shell.openExternal(updateAvailable.url || SOURCE),
-      },
-      { type: 'separator' }
-    );
-  }
-
-  items.push(
-    { label: i18n.t(locale, 'menu.mainWindow', `${DISPLAY_NAME} Window`, { name: DISPLAY_NAME }), click: () => createWindow() },
-    { label: i18n.t(locale, 'menu.about', `About ${DISPLAY_NAME}`, { name: DISPLAY_NAME }), click: () => openAbout() },
-    ...(login.available
-      ? [
-          {
-            label: i18n.t(locale, 'menu.openAtLogin', 'Open at Login'),
-            type: 'checkbox',
-            checked: login.enabled,
-            click: (item) => setLoginItem(item.checked),
-          },
-        ]
-      : []),
-    {
-      // The task's own title, the same one the Finder quick action shows. Menu
-      // entries naming a task stay English so one name reaches every surface.
-      // The ellipsis marks the file picker this entry opens before anything runs.
-      label: `${registry.get('archive.compress').title}…`,
-      click: async () => {
-        const picked = await dialog.showOpenDialog({
-          properties: ['openFile', 'openDirectory', 'multiSelections'],
-        });
-        if (picked.canceled || picked.filePaths.length === 0) return;
-        createWindow();
-        send('task:prefill', { task: 'archive.compress', input: { targets: picked.filePaths } });
-      },
-    },
-    { type: 'separator' },
-    { label: 'Quit', role: 'quit' }
-  );
-
-  return Menu.buildFromTemplate(items);
-}
-
-async function refreshTray() {
-  if (!tray) return;
-  tray.setContextMenu(await buildTrayMenu());
-}
-
+// The tray only opens the window and quits. Status, running tasks and settings
+// live in the window, so the menu never needs rebuilding. It is English in
+// every locale, like the macOS menu bar extras it sits beside.
 function createTray() {
   // A template image lets macOS invert the mark for a light or dark menu bar
   // and dim it when the application is not frontmost. Naming the file
@@ -241,10 +144,13 @@ function createTray() {
   icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip(DISPLAY_NAME);
-  refreshTray();
-  // The menu is rebuilt on open so the power state and running list are current
-  // rather than whatever they were when the app launched.
-  tray.on('mouse-down', refreshTray);
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: `Open ${DISPLAY_NAME}`, click: () => createWindow() },
+      { type: 'separator' },
+      { label: 'Quit', role: 'quit' },
+    ])
+  );
 }
 
 function buildMenu() {
@@ -288,7 +194,6 @@ ipcMain.handle('i18n:set', (event, next) => {
   locale = i18n.normalize(next);
   settings.set('locale', locale);
   buildMenu();
-  refreshTray();
   return { locale, ui: buildUiStrings(), tasks: taskPayload() };
 });
 
@@ -359,7 +264,6 @@ ipcMain.handle('task:run', async (event, { taskId, input, confirm }) => {
         onEvent: (record) => send('run:event', record),
       }
     );
-    refreshTray();
     return {
       ok: true,
       ...outcome,
@@ -580,7 +484,6 @@ ipcMain.handle('task:runElevated', async (event, { taskId, input }) => {
     const { stdout } = await execFileAsync('/usr/bin/osascript', ['-e', script]);
     const line = stdout.trim().split('\n').pop();
     const outcome = JSON.parse(line);
-    refreshTray();
     if (outcome.status === 'error' || outcome.error) {
       return { ok: false, error: i18n.localizeError(outcome.error, locale) };
     }
@@ -630,15 +533,13 @@ app.whenReady().then(() => {
   updates.check(VERSION).then((found) => {
     if (!found) return;
     updateAvailable = found;
-    refreshTray();
     send('update:available', found);
   });
 
   watcher.watchRuns(
     (update) => {
       send('run:external', update);
-      refreshTray();
-    },
+      },
     (runId) => localRuns.has(runId)
   );
 

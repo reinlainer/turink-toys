@@ -30,6 +30,7 @@
 <!-- 최근 n건(에이전트가 판단)만 유지하며 이전 내역은 task-completed/ 디렉터리로 보존 -->
 | 완료일 | 보관 경로 | 작업명 | 완료 결과 요약 |
 |:---|:---|:---|:---|
+| 2026-10-27 | `task-completed/20261027-power-card-copy.md` | 전원 화면 문구 간결화와 토글 전환 | 설명을 불릿으로 줄이고 전원 무관 동작을 상단 설명으로 이동. 켜기·끄기 버튼을 토글로, 메뉴 막대 메뉴를 Open Turink Toys와 Quit 두 항목으로 축소. Gemini와 한글 교정 협업 |
 | 2026-10-27 | `task-completed/20261027-workspace-update-0-6-9.md` | 워크스페이스 0.6.9 업데이트 | 원본 0.4.1~0.6.9 변경분 반영. AGENTS.md 지침, status.md 구조, 문체 가이드, 에이전트 팀 프로토콜 갱신 |
 | 2026-10-27 | `task-completed/20261027-power-copy.md` | 전원 문구 교정과 로그인 시 열기 설정 | Gemini와 협업해 전원 연결 여부에 따른 동작을 구분한 문구로 교정. 현재 전원 기준 표시와 로그인 시 열기 추가. 테스트 통과, 화면 확인 |
 | 2026-10-15 | `task-completed/20261015-container-trash-fix.md` | 앱 데이터 폴더 휴지통 이동 실패 수정 | Finder가 거부하던 `~/Library/Containers` 항목을 직접 이동하도록 수정. Paintbrush 삭제·되돌리기 재현 확인 |

@@ -19,13 +19,6 @@ module.exports = {
     apps: '앱',
   },
 
-  // Power state lines in the menu bar menu.
-  tray: {
-    lidAwake: '디스플레이를 닫을 때: 잠자기 안 함',
-    lidSleeps: '디스플레이를 닫을 때: 잠자기',
-    keepAwake: '잠자기 방지 사용 중(남은 시간 {minutes}분)',
-  },
-
   update: {
     available: '{version} 버전을 사용할 수 있습니다',
     howTo: '터미널에서 다음 명령어를 실행하여 업데이트하십시오.',
@@ -59,7 +52,6 @@ module.exports = {
     bringAllToFront: '모두 앞으로 가져오기',
     help: '도움말',
     repository: '프로젝트 페이지',
-    openAtLogin: '로그인 시 열기',
   },
 
   // Window text. Mirrors packages/app/src/strings.js; anything left out falls
@@ -204,7 +196,7 @@ module.exports = {
     },
 
     power: {
-      subtitle: '빌드, 다운로드 등 시간이 오래 걸리는 작업 중에 Mac이 잠자기 상태로 전환되지 않도록 합니다. 디스플레이를 닫은 상태에서도 사용할 수 있습니다.',
+      subtitle: '빌드, 다운로드 등 시간이 오래 걸리는 작업 중에 Mac이 잠자기 상태로 전환되지 않도록 합니다. 전원 어댑터의 사용 여부와 관계없이 동작합니다.',
       lidState: '디스플레이를 닫을 때',
       lidSleeps: '잠자기',
       lidAwake: '잠자기 안 함',
@@ -224,17 +216,15 @@ module.exports = {
       hours: '{hours}시간',
       keepAwakeTitle: '디스플레이를 연 상태에서 잠자기 방지',
       keepAwakeLabel: '잠자기 방지 설정',
-      keepAwakeBody: '일정 시간 동안 사용하지 않아도 Mac이 자동으로 잠자기 상태로 전환되지 않도록 합니다. 디스플레이는 설정된 시간이 지나면 평소와 같이 꺼지며 디스플레이를 닫으면 잠자기 상태로 전환됩니다. 전원 어댑터를 사용할 때 [배터리] 설정의 「디스플레이가 꺼져 있을 때 전원 어댑터 사용 시 컴퓨터를 자동으로 잠자지 않게 하기」가 켜져 있으면 원래 잠자기 상태로 전환되지 않으므로 이 기능을 켜도 동작이 달라지지 않습니다.',
+      keepAwakePoints: '디스플레이 끄기 시간이 지나면 화면만 꺼짐\n디스플레이를 닫으면 잠자기 상태로 전환',
       keepAwakeActive: '{time}까지 사용 중',
       lidTitle: '디스플레이를 닫은 상태에서 잠자기 방지',
       lidLabel: '디스플레이를 닫은 상태의 잠자기 방지 설정',
-      lidBody: '디스플레이를 닫은 상태에서 진행 중인 작업을 완료해야 할 때 사용합니다. 전원 어댑터와 배터리 중 어느 전원을 사용하든 디스플레이를 닫아도 잠자기 상태로 전환되지 않습니다. 관리자 암호가 필요하며 지정한 시간이 지나면 기존 설정으로 자동 복원됩니다.',
+      lidPoints: '지정한 시간이 지나면 기존 설정으로 자동 복원',
       lidActive: '{time}까지 사용 중',
       lidActiveNoRestore: '사용 중(자동 복원 예약 없음)',
-      lidWarning: '이 기능을 사용하는 동안에는 Mac을 가방 등 통풍이 되지 않는 곳에 넣지 마십시오. 과열될 수 있습니다. 배터리를 사용할 때는 디스플레이를 닫은 상태에서도 배터리가 계속 소모됩니다.',
-      turnOn: '켜기',
-      turnOff: '끄기',
-      duration: '사용 시간',
+      lidWarning: '과열될 수 있으므로 사용 중에는 가방 등 통풍이 되지 않는 곳에 넣지 마십시오.',
+      duration: '적용 시간',
     },
 
     other: {

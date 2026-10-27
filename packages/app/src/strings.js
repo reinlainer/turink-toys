@@ -149,7 +149,7 @@ module.exports = {
   },
 
   power: {
-    subtitle: 'Keep the Mac awake through a long build or download, with the lid open or closed.',
+    subtitle: 'Keep the Mac awake through a long build or download, with the lid open or closed. Works with or without the power adapter.',
     lidState: 'When the lid closes',
     lidSleeps: 'Sleeps',
     lidAwake: 'Stays awake',
@@ -169,16 +169,14 @@ module.exports = {
     hours: '{hours} h',
     keepAwakeTitle: 'Stay awake while the lid is open',
     keepAwakeLabel: 'Stay awake',
-    keepAwakeBody: 'Stops the Mac from sleeping when idle. The display still turns off on its usual schedule, and closing the lid still puts the Mac to sleep. On the power adapter nothing changes if "Prevent automatic sleeping on power adapter when the display is off" is already on in Battery settings.',
+    keepAwakePoints: 'Only the display turns off, on its usual timer\nClosing the lid puts the Mac to sleep',
     keepAwakeActive: 'On until {time}',
     lidTitle: 'Stay awake with the lid closed',
     lidLabel: 'Stay awake with the lid closed',
-    lidBody: 'For letting a job finish with the lid shut. The Mac stays awake whether it runs on the power adapter or on battery. Asks for an administrator password and switches back on its own after the time you choose.',
+    lidPoints: 'Switches back on its own when the time is up',
     lidActive: 'On until {time}',
     lidActiveNoRestore: 'On. No automatic switch back is scheduled.',
-    lidWarning: 'Do not put the Mac in a bag while this is on. It can overheat. On battery, the battery keeps draining while the lid is closed.',
-    turnOn: 'Turn On',
-    turnOff: 'Turn Off',
+    lidWarning: 'Do not put it in a bag or anywhere without airflow while this is on, as it can overheat.',
     duration: 'For',
   },
 
