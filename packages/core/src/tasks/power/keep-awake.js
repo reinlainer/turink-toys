@@ -16,7 +16,7 @@ register(
     title: 'Keep awake',
     summary: 'Suppress idle sleep for a set number of minutes',
     whenToUse:
-      'Keeping the machine awake through a long build or download while the lid stays open. This does not affect what happens when the lid closes; use power.lid for that.',
+      'Keeping the machine awake through a long build or download while the lid stays open. It does not keep the display on and does not affect what happens when the lid closes; use power.lid for that. On the power adapter it changes nothing if automatic sleep is already off there.',
     risk: 'mutate',
     cost: 'instant',
     idempotent: false,
@@ -53,14 +53,14 @@ register(
     ],
     present(result, t) {
       if (!result || !result.active) {
-        return { rows: [row(t('result.idleSleep', 'Idle sleep'), t('result.normal', 'Normal'))] };
+        return { rows: [row(t('result.idleSleep', 'Stay awake'), t('result.normal', 'Off'))] };
       }
       return {
         rows: [
-          row(t('result.idleSleep', 'Idle sleep'), t('result.suppressed', 'Suppressed'), 'warn'),
+          row(t('result.idleSleep', 'Stay awake'), t('result.suppressed', 'On'), 'warn'),
           row(t('result.until', 'Until'), new Date(result.expiresAt).toLocaleString()),
         ],
-        notes: [result && result.note],
+        notes: [t('result.keepAwakeNote', 'Closing the lid still sleeps the machine. Use power.lid to change that.')],
       };
     },
 

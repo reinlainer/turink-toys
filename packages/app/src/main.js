@@ -114,6 +114,24 @@ function openAbout() {
   });
 }
 
+// ---------------------------------------------------------------- login item
+
+// macOS registers the running bundle as the login item. Run from source, that
+// bundle is Electron itself, so the setting is offered only in a built app.
+function loginItem() {
+  if (!app.isPackaged) return { available: false, enabled: false, needsApproval: false };
+  const { openAtLogin, status } = app.getLoginItemSettings();
+  return { available: true, enabled: openAtLogin, needsApproval: status === 'requires-approval' };
+}
+
+function setLoginItem(enabled) {
+  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: enabled });
+  const state = loginItem();
+  refreshTray();
+  send('login:changed', state);
+  return state;
+}
+
 // ---------------------------------------------------------------- tray
 
 async function powerSummary() {
@@ -128,6 +146,7 @@ async function powerSummary() {
 async function buildTrayMenu() {
   const status = await powerSummary();
   const active = journal.list({ activeOnly: true, limit: 5 });
+  const login = loginItem();
 
   const items = [];
 
@@ -148,13 +167,15 @@ async function buildTrayMenu() {
   if (status) {
     items.push({
       label: status.lidSleepDisabled
-        ? 'Lid closed: staying awake'
-        : 'Lid closed: sleeps normally',
+        ? i18n.t(locale, 'tray.lidAwake', 'Lid closed: staying awake')
+        : i18n.t(locale, 'tray.lidSleeps', 'Lid closed: sleeps normally'),
       enabled: false,
     });
     if (status.keepAwake.active) {
       items.push({
-        label: `  Idle sleep suppressed, ${status.keepAwake.minutesLeft} min left`,
+        label: `  ${i18n.t(locale, 'tray.keepAwake', 'Idle sleep suppressed, {minutes} min left', {
+          minutes: status.keepAwake.minutesLeft,
+        })}`,
         enabled: false,
       });
     }
@@ -176,6 +197,16 @@ async function buildTrayMenu() {
   items.push(
     { label: i18n.t(locale, 'menu.mainWindow', `${DISPLAY_NAME} Window`, { name: DISPLAY_NAME }), click: () => createWindow() },
     { label: i18n.t(locale, 'menu.about', `About ${DISPLAY_NAME}`, { name: DISPLAY_NAME }), click: () => openAbout() },
+    ...(login.available
+      ? [
+          {
+            label: i18n.t(locale, 'menu.openAtLogin', 'Open at Login'),
+            type: 'checkbox',
+            checked: login.enabled,
+            click: (item) => setLoginItem(item.checked),
+          },
+        ]
+      : []),
     {
       // The task's own title, the same one the Finder quick action shows. Menu
       // entries naming a task stay English so one name reaches every surface.
@@ -447,6 +478,9 @@ ipcMain.handle('task:peek', async (event, { taskId, input }) => {
     return { ok: false, error: i18n.localizeError(failure.error, locale) };
   }
 });
+
+ipcMain.handle('login:get', () => loginItem());
+ipcMain.handle('login:set', (event, enabled) => setLoginItem(Boolean(enabled)));
 
 ipcMain.handle('runs:list', () => journal.list({ limit: 30 }));
 

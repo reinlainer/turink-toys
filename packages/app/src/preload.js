@@ -22,11 +22,14 @@ contextBridge.exposeInMainWorld('turink', {
   readRun: (runId) => ipcRenderer.invoke('runs:read', runId),
   reveal: (target) => ipcRenderer.invoke('shell:reveal', target),
   about: () => ipcRenderer.invoke('about:info'),
+  loginItem: () => ipcRenderer.invoke('login:get'),
+  setLoginItem: (enabled) => ipcRenderer.invoke('login:set', enabled),
   openExternal: (url) => ipcRenderer.invoke('shell:external', url),
 
   onEvent: (handler) => ipcRenderer.on('run:event', (event, record) => handler(record)),
   onStarted: (handler) => ipcRenderer.on('run:started', (event, payload) => handler(payload)),
   onExternal: (handler) => ipcRenderer.on('run:external', (event, payload) => handler(payload)),
   onPrefill: (handler) => ipcRenderer.on('task:prefill', (event, payload) => handler(payload)),
+  onLoginItem: (handler) => ipcRenderer.on('login:changed', (event, state) => handler(state)),
   onFocusRun: (handler) => ipcRenderer.on('run:focus', (event, runId) => handler(runId)),
 });

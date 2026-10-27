@@ -153,6 +153,9 @@ h1, h2, h3, p { margin: 0; }
   border-top: 1px solid var(--line);
 }
 
+.login-item { padding: 2px 4px; }
+.login-item[hidden] { display: none; }
+
 .language-select {
   font-size: 12px;
   padding: 5px 8px;

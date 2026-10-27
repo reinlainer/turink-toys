@@ -20,7 +20,7 @@ register(
     title: 'Lid close behaviour',
     summary: 'Choose whether closing the lid puts the machine to sleep',
     whenToUse:
-      'Keeping a long job running with the lid closed, typically on an external display. Requires administrator rights, so an agent cannot complete it alone.',
+      'Keeping a long job running with the lid closed. Applies the same way on the power adapter and on battery. Requires administrator rights, so an agent cannot complete it alone.',
     risk: 'mutate',
     cost: 'instant',
     idempotent: true,
@@ -76,7 +76,11 @@ register(
             ? row(t('result.restoresAt', 'Sleep returns at'), new Date(result.restoreAt).toLocaleString())
             : null,
         ].filter(Boolean),
-        notes: [result && result.warning],
+        notes: [
+          result.lidSleepDisabled
+            ? t('result.lidWarning', 'The machine now stays awake with the lid closed. Do not put it in a bag before sleep is restored.')
+            : null,
+        ],
       };
     },
 
@@ -100,8 +104,17 @@ register(
 
       let restoreAt = null;
       if (disable) {
-        restoreAt = new Date(Date.now() + input.minutes * 60000).toISOString();
-        await pmset.scheduleRestore(restoreAt);
+        try {
+          await pmset.scheduleRestore(new Date(Date.now() + input.minutes * 60000).toISOString());
+        } catch (err) {
+          // Without the restore the machine would stay awake indefinitely with
+          // the lid shut, so the setting is undone rather than left on.
+          await pmset.setLidSleepDisabled(false);
+          fail('FAILED', `The automatic restore could not be scheduled, so lid sleep was turned back on. ${String(err.stderr || err.message).trim()}`, {
+            hint: `Try again. If it keeps failing, check "sudo launchctl print system/${pmset.DAEMON_LABEL}".`,
+          });
+        }
+        restoreAt = pmset.scheduledRestore();
         run.info(`Sleep returns automatically at ${restoreAt}`);
       } else {
         await pmset.cancelRestore();

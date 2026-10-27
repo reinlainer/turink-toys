@@ -19,6 +19,13 @@ module.exports = {
     apps: '앱',
   },
 
+  // Power state lines in the menu bar menu.
+  tray: {
+    lidAwake: '디스플레이를 닫을 때: 잠자기 안 함',
+    lidSleeps: '디스플레이를 닫을 때: 잠자기',
+    keepAwake: '잠자기 방지 사용 중(남은 시간 {minutes}분)',
+  },
+
   update: {
     available: '{version} 버전을 사용할 수 있습니다',
     howTo: '터미널에서 다음 명령어를 실행하여 업데이트하십시오.',
@@ -52,12 +59,18 @@ module.exports = {
     bringAllToFront: '모두 앞으로 가져오기',
     help: '도움말',
     repository: '프로젝트 페이지',
+    openAtLogin: '로그인 시 열기',
   },
 
   // Window text. Mirrors packages/app/src/strings.js; anything left out falls
   // back to the English written there.
   ui: {
     run: '실행',
+    loginItem: {
+      label: '로그인 시 열기',
+      failed: '로그인 항목 설정을 변경하지 못했습니다.',
+      needsApproval: '시스템 설정 > 일반 > 로그인 항목 및 확장 프로그램에서 Turink Toys를 허용하십시오.',
+    },
     running: '진행 중…',
     cancel: '취소',
     proceed: '계속',
@@ -195,23 +208,30 @@ module.exports = {
       lidState: '디스플레이를 닫을 때',
       lidSleeps: '잠자기',
       lidAwake: '잠자기 안 함',
-      lidRestoreScheduled: '지정한 시간에 자동 복원',
+      lidRestoreScheduled: '{time}에 자동 복원',
       idleState: '잠자기 방지',
       idleNormal: '사용 안 함',
       idlePrevented: '사용 중(남은 시간 {minutes}분)',
+      autoSleep: '자동 잠자기: {value}',
+      autoSleepNever: '안 함',
+      autoSleepWithDisplay: '디스플레이가 꺼질 때',
+      autoSleepAfter: '{minutes}분 동안 사용하지 않을 때',
       displayState: '디스플레이 끄기',
       displayNever: '안 함',
+      sourceAdapter: '전원 어댑터 사용 시 설정',
+      sourceBattery: '배터리 사용 시 설정',
       minutes: '{minutes}분',
       hours: '{hours}시간',
       keepAwakeTitle: '디스플레이를 연 상태에서 잠자기 방지',
       keepAwakeLabel: '잠자기 방지 설정',
-      keepAwakeBody: '일정 시간 동안 사용하지 않아도 Mac이 자동으로 잠자기 상태로 전환되지 않도록 합니다. 디스플레이를 닫으면 평소와 같이 잠자기 상태로 전환됩니다.',
+      keepAwakeBody: '일정 시간 동안 사용하지 않아도 Mac이 자동으로 잠자기 상태로 전환되지 않도록 합니다. 디스플레이는 설정된 시간이 지나면 평소와 같이 꺼지며 디스플레이를 닫으면 잠자기 상태로 전환됩니다. 전원 어댑터를 사용할 때 [배터리] 설정의 「디스플레이가 꺼져 있을 때 전원 어댑터 사용 시 컴퓨터를 자동으로 잠자지 않게 하기」가 켜져 있으면 원래 잠자기 상태로 전환되지 않으므로 이 기능을 켜도 동작이 달라지지 않습니다.',
       keepAwakeActive: '{time}까지 사용 중',
       lidTitle: '디스플레이를 닫은 상태에서 잠자기 방지',
       lidLabel: '디스플레이를 닫은 상태의 잠자기 방지 설정',
-      lidBody: '외장 디스플레이를 사용하거나, 디스플레이를 닫은 상태에서 진행 중인 작업을 완료해야 할 때 사용합니다. 관리자 암호가 필요하며, 지정한 시간이 지나면 기존 설정으로 자동 복원됩니다.',
-      lidActive: '사용 중(지정한 시간에 자동 해제)',
-      lidWarning: '이 기능을 사용하는 동안에는 Mac을 가방 등 통풍이 되지 않는 곳에 넣지 마십시오. 과열될 수 있습니다.',
+      lidBody: '디스플레이를 닫은 상태에서 진행 중인 작업을 완료해야 할 때 사용합니다. 전원 어댑터와 배터리 중 어느 전원을 사용하든 디스플레이를 닫아도 잠자기 상태로 전환되지 않습니다. 관리자 암호가 필요하며 지정한 시간이 지나면 기존 설정으로 자동 복원됩니다.',
+      lidActive: '{time}까지 사용 중',
+      lidActiveNoRestore: '사용 중(자동 복원 예약 없음)',
+      lidWarning: '이 기능을 사용하는 동안에는 Mac을 가방 등 통풍이 되지 않는 곳에 넣지 마십시오. 과열될 수 있습니다. 배터리를 사용할 때는 디스플레이를 닫은 상태에서도 배터리가 계속 소모됩니다.',
       turnOn: '켜기',
       turnOff: '끄기',
       duration: '사용 시간',
@@ -271,11 +291,21 @@ module.exports = {
     scheduled: '예약됨',
     restoresAt: '복원 예정 시각',
     displaySleep: '디스플레이 끄기',
-    idleSleep: '자동 잠자기',
-    suppressed: '방지 중',
-    suppressedFor: '방지 중(남은 시간 {minutes}분)',
-    normal: '정상',
+    powerSource: '현재 전원',
+    sourceAdapter: '전원 어댑터',
+    sourceBattery: '배터리',
+    autoSleep: '자동 잠자기',
+    autoSleepWithDisplay: '디스플레이가 꺼질 때',
+    autoSleepAfter: '{minutes}분 동안 사용하지 않을 때',
+    minutes: '{minutes}분',
+    never: '안 함',
+    idleSleep: '잠자기 방지',
+    suppressed: '사용 중',
+    suppressedFor: '사용 중(남은 시간 {minutes}분)',
+    normal: '사용 안 함',
     until: '해제 예정 시각',
+    keepAwakeNote: '디스플레이를 닫으면 잠자기 상태로 전환됩니다. 디스플레이를 닫은 상태에서도 잠자기 상태로 전환되지 않게 하려면 power.lid(디스플레이를 닫은 상태에서 잠자기 방지)를 사용하십시오.',
+    lidWarning: '디스플레이를 닫아도 잠자기 상태로 전환되지 않습니다. 자동 복원되기 전에는 Mac을 가방 등 통풍이 되지 않는 곳에 넣지 마십시오.',
   },
 
   // Displayed when a run stops at a gate. The English message stays in the
@@ -489,8 +519,8 @@ module.exports = {
 
     'power.status': {
       title: '전원 상태',
-      summary: '현재 잠자기 및 디스플레이 설정 확인',
-      whenToUse: '설정을 변경하기 전에 현재 상태와 남은 시간을 확인할 때 사용합니다.',
+      summary: '현재 전원의 잠자기 설정과 디스플레이 설정 확인',
+      whenToUse: '설정을 변경하기 전에 현재 상태와 남은 시간을 확인할 때 사용합니다. 현재 사용 중인 전원(전원 어댑터 또는 배터리)을 기준으로 자동 잠자기와 디스플레이 끄기 시간의 설정값을 표시합니다.',
       input: {},
     },
 
@@ -498,7 +528,7 @@ module.exports = {
       title: '디스플레이를 닫은 상태에서 잠자기 방지',
       summary: '디스플레이를 닫아도 잠자기 상태로 전환되지 않도록 설정',
       whenToUse:
-        '외장 디스플레이를 사용하거나, 디스플레이를 닫은 상태에서 시간이 오래 걸리는 작업을 진행할 때 사용합니다. 관리자 권한이 필요합니다.',
+        '디스플레이를 닫은 상태에서 시간이 오래 걸리는 작업을 진행할 때 사용합니다. 전원 어댑터와 배터리 중 어느 전원을 사용하든 같은 방식으로 적용됩니다. 관리자 권한이 필요합니다.',
       input: {
         sleep: {
           label: '디스플레이를 닫을 때',
@@ -507,7 +537,7 @@ module.exports = {
         minutes: {
           label: '자동 복원까지의 시간',
           description:
-            '지정한 시간이 지나면 기존 설정으로 자동 복원됩니다. 잠자기 방지 상태에서 Mac을 가방 등에 넣으면 과열될 수 있으므로, 이 시간 제한은 항상 적용됩니다.',
+            '지정한 시간이 지나면 기존 설정으로 자동 복원됩니다. 잠자기 방지 상태에서 Mac을 가방 등에 넣으면 과열될 수 있으므로 이 시간 제한은 항상 적용됩니다.',
         },
       },
     },
@@ -516,7 +546,7 @@ module.exports = {
       title: '잠자기 방지',
       summary: '지정한 시간 동안 Mac이 자동으로 잠자기 상태로 전환되지 않도록 설정',
       whenToUse:
-        '디스플레이를 연 상태에서 빌드, 다운로드 등 시간이 오래 걸리는 작업을 진행할 때 사용합니다. 디스플레이를 닫았을 때의 동작은 변경되지 않습니다.',
+        '디스플레이를 연 상태에서 빌드, 다운로드 등 시간이 오래 걸리는 작업을 진행할 때 사용합니다. 디스플레이 끄기와 디스플레이를 닫았을 때의 동작은 변경되지 않습니다. 전원 어댑터를 사용할 때 자동 잠자기가 이미 꺼져 있으면 이 기능을 켜도 동작이 달라지지 않습니다.',
       input: {
         minutes: { label: '유지 시간', description: '잠자기를 방지할 시간입니다.' },
         off: { label: '즉시 해제', description: '사용 중인 잠자기 방지를 즉시 해제합니다.' },

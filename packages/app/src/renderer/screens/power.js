@@ -30,6 +30,19 @@
         minutes % 60 === 0 ? format(t().hours, { hours: minutes / 60 }) : format(t().minutes, { minutes });
       const clock = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+      // The sleep and display values belong to the power source in use, and a
+      // laptop keeps different ones on the adapter and on battery.
+      const sourceNote = (st) =>
+        st.powerSource === 'ac' ? t().sourceAdapter : st.powerSource === 'battery' ? t().sourceBattery : null;
+
+      // Mirrors power.status: no sleep timer means never, and one at or below
+      // the display timer means the Mac sleeps when the display turns off.
+      function autoSleep(st) {
+        if (!st.systemSleepMinutes) return t().autoSleepNever;
+        if (st.displaySleepMinutes && st.systemSleepMinutes <= st.displaySleepMinutes) return t().autoSleepWithDisplay;
+        return format(t().autoSleepAfter, { minutes: st.systemSleepMinutes });
+      }
+
       async function refresh() {
         const outcome = await ctx.peek('power.status');
         if (outcome.ok) state.status = outcome.result;
@@ -54,7 +67,7 @@
             'lid',
             t().lidState,
             st.lidSleepDisabled ? t().lidAwake : t().lidSleeps,
-            st.lidSleepDisabled && st.lidRestoreScheduled ? t().lidRestoreScheduled : null,
+            st.lidSleepDisabled && st.lidRestoreAt ? format(t().lidRestoreScheduled, { time: clock(st.lidRestoreAt) }) : null,
             st.lidSleepDisabled ? 'on' : null
           )
         );
@@ -63,7 +76,7 @@
             'moon',
             t().idleState,
             st.keepAwake.active ? format(t().idlePrevented, { minutes: st.keepAwake.minutesLeft }) : t().idleNormal,
-            null,
+            st.keepAwake.active ? null : format(t().autoSleep, { value: autoSleep(st) }),
             st.keepAwake.active ? 'on' : null
           )
         );
@@ -71,7 +84,8 @@
           tile(
             'display',
             t().displayState,
-            st.displaySleepMinutes ? format(t().minutes, { minutes: st.displaySleepMinutes }) : t().displayNever
+            st.displaySleepMinutes ? format(t().minutes, { minutes: st.displaySleepMinutes }) : t().displayNever,
+            sourceNote(st)
           )
         );
       }
@@ -150,7 +164,7 @@
           body: t().lidBody,
           warning: t().lidWarning,
           active: st.lidSleepDisabled,
-          activeText: t().lidActive,
+          activeText: st.lidRestoreAt ? format(t().lidActive, { time: clock(st.lidRestoreAt) }) : t().lidActiveNoRestore,
           values: LID_CHOICES,
           chosen: state.lidMinutes,
           onPick: (value) => {

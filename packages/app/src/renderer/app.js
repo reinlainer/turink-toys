@@ -15,6 +15,9 @@
     nav: document.getElementById('nav'),
     screen: document.getElementById('screen'),
     language: document.getElementById('language-select'),
+    loginItem: document.getElementById('login-item'),
+    loginToggle: document.getElementById('login-toggle'),
+    loginLabel: document.getElementById('login-label'),
     activity: document.getElementById('activity'),
     activityToggle: document.getElementById('activity-toggle'),
     activityLabel: document.getElementById('activity-label'),
@@ -360,6 +363,7 @@
     ui.rawLabel.textContent = strings.activity.raw;
     ui.activityClear.textContent = strings.activity.clear;
     ui.activityRecent.textContent = strings.activity.recent;
+    ui.loginLabel.textContent = strings.loginItem.label;
     term.render();
   }
 
@@ -371,6 +375,20 @@
     buildScreens();
     applyStrings();
     show(current ? current.id : screens[0].id);
+  }
+
+  function showLoginItem(state) {
+    ui.loginItem.hidden = !state.available;
+    ui.loginToggle.checked = state.enabled;
+  }
+
+  // macOS can refuse the change or hold it until the person allows it in
+  // System Settings, so the checkbox shows what macOS reports afterwards.
+  async function changeLoginItem(enabled) {
+    const state = await window.turink.setLoginItem(enabled);
+    showLoginItem(state);
+    if (state.needsApproval) toast(strings.loginItem.needsApproval, 'error');
+    else if (state.enabled !== enabled) toast(strings.loginItem.failed, 'error');
   }
 
   // ------------------------------------------------------------- start
@@ -407,6 +425,8 @@
   ui.raw.addEventListener('change', () => term.render());
   ui.activityClear.addEventListener('click', () => term.clear());
   ui.language.addEventListener('change', () => changeLocale(ui.language.value));
+  ui.loginToggle.addEventListener('change', () => changeLoginItem(ui.loginToggle.checked));
+  window.turink.onLoginItem(showLoginItem);
   ui.activityRecent.addEventListener('click', async () => {
     const runs = await window.turink.listRuns();
     term.clear();
@@ -431,6 +451,7 @@
     strings = payload.ui;
     availableLocales = payload.available;
     buildLanguageSelect(payload.locale);
+    showLoginItem(await window.turink.loginItem());
     tasks = await window.turink.listTasks();
     buildScreens();
     applyStrings();
