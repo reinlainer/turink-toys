@@ -91,6 +91,7 @@ module.exports = {
       disk: '디스크 정리',
       apps: '앱 관리',
       power: '전원',
+      folders: '폴더',
       other: '기타',
     },
 
@@ -227,9 +228,57 @@ module.exports = {
       duration: '적용 시간',
     },
 
+    folders: {
+      subtitle: '자주 여는 폴더를 메뉴 막대 아이콘에서 바로 엽니다. 항목을 드래그하여 순서를 변경할 수 있습니다.',
+      add: '추가…',
+      dropHint: 'Finder에서 폴더를 이곳 또는 메뉴 막대 아이콘으로 드래그하여 추가하십시오.',
+      emptyTitle: '자주 여는 폴더를 추가하십시오',
+      emptyBody: '추가한 폴더는 메뉴 막대 아이콘에서 바로 열 수 있습니다.',
+      emptyDrop: '이곳에 놓기',
+      emptyDropBody: 'Finder에서 폴더를 이 영역으로 드래그합니다.',
+      emptyMenu: '메뉴 막대 아이콘에 놓기',
+      emptyMenuBody: '이 창을 열지 않고 폴더를 추가합니다.',
+      emptyButton: '추가 버튼',
+      emptyButtonBody: '폴더 선택 창에서 폴더를 선택합니다.',
+      open: 'Finder에서 열기',
+      copy: '경로 복사',
+      copied: '경로를 복사했습니다',
+      rename: '이름 변경',
+      renamePlaceholder: '비워 두면 폴더 이름을 사용합니다',
+      remove: '목록에서 제거',
+      removed: '{name}을(를) 목록에서 제거했습니다.',
+      added: '폴더 {count}개를 추가했습니다.',
+      alreadySaved: '이미 목록에 있습니다.',
+      onlyFolders: '폴더만 추가할 수 있습니다.',
+      notConnected: '연결되지 않음',
+      addGroup: '그룹 추가',
+      newGroup: '새 그룹',
+      groupNamePlaceholder: '그룹 이름',
+      groupRename: '그룹 이름 변경',
+      groupRemove: '그룹 삭제',
+      addToGroup: '이 그룹에 폴더 추가',
+      groupRemoved: '{name} 그룹을 삭제했습니다. 그룹에 있던 폴더는 맨 위 카드로 옮겼습니다.',
+      groupRemovedEmpty: '{name} 그룹을 삭제했습니다.',
+      groupEmpty: '폴더를 이곳으로 드래그하여 이 그룹에 추가하십시오.',
+      ungroupedDrop: '폴더를 이곳으로 드래그하여 그룹에서 제외하십시오.',
+      placeDesktop: '데스크탑',
+      placeDocuments: '문서',
+      placeDownloads: '다운로드',
+      placeHome: '홈',
+    },
+
     other: {
       subtitle: '전용 화면이 아직 제공되지 않는 기능입니다.',
     },
+  },
+
+  // Notification Center messages when folders are added from the menu bar.
+  notify: {
+    folderAdded: '{name}을(를) 폴더 목록에 추가했습니다.',
+    foldersAdded: '폴더 {count}개를 폴더 목록에 추가했습니다.',
+    folderNotAdded: '추가한 폴더가 없습니다. 목록에 없는 폴더만 추가할 수 있습니다.',
+    onlyFolders: '폴더만 추가할 수 있습니다.',
+    folderOpenFailed: '{name}을(를) 열 수 없습니다.',
   },
 
   // Cleanup locations. These are catalogue data rather than interface chrome,
@@ -254,6 +303,13 @@ module.exports = {
   result: {
     files: '파일',
     folders: '폴더',
+    folder: '폴더',
+    alreadySaved: '이미 목록에 있음',
+    position: '위치',
+    name: '이름',
+    opened: '연 폴더',
+    folderRemoved: '목록에서 제거',
+    group: '그룹',
     size: '크기',
     entries: '항목',
     renamed: '이름 변경',
@@ -569,6 +625,111 @@ module.exports = {
       whenToUse: '삭제한 앱을 원래 위치로 되돌릴 때 사용합니다. 해당 삭제 작업의 실행 번호가 필요합니다.',
       input: {
         run: { label: '실행 번호', description: '되돌릴 앱 삭제 작업의 실행 번호입니다.' },
+      },
+    },
+
+    'folders.list': {
+      title: '저장한 폴더 목록',
+      summary: '바로 열기 위해 저장한 폴더 목록',
+      whenToUse:
+        '폴더를 열거나 이름·순서를 바꾸거나 제거하기 전에 저장된 정확한 경로를 확인할 때 사용합니다. 외장 디스크나 클라우드 폴더는 없을 수 있으므로 각 폴더에 지금 접근할 수 있는지도 함께 보고합니다. 설정만 읽습니다.',
+    },
+
+    'folders.add': {
+      title: '폴더 추가',
+      summary: '바로 열 수 있도록 폴더 저장',
+      whenToUse:
+        '메뉴 막대와 앱 창에서 여는 폴더 목록에 폴더를 추가할 때 사용합니다. 폴더는 그룹이 없는 구역이나 지정한 그룹의 끝에 추가되며 지정한 그룹이 없으면 새로 만듭니다. 이미 목록에 있는 폴더는 위치를 바꾸지 않고 중복으로 보고합니다.',
+      input: {
+        path: { label: '폴더', description: '저장할 폴더입니다. 「~」는 홈 폴더를 뜻합니다.' },
+        name: { label: '이름', description: '폴더 이름 대신 표시할 이름입니다.' },
+        group: { label: '그룹', description: '폴더를 넣을 그룹입니다. 지정하지 않으면 그룹 없이 추가됩니다.' },
+      },
+    },
+
+    'folders.remove': {
+      title: '폴더 제거',
+      summary: '저장한 목록에서 폴더 제거',
+      whenToUse: '바로 열기 목록에서 폴더를 제거할 때 사용합니다. 폴더 자체와 그 안의 내용은 변경하지 않습니다.',
+      input: {
+        path: { label: '폴더', description: 'folders.list가 보고하는 저장된 경로입니다.' },
+      },
+    },
+
+    'folders.reorder': {
+      title: '폴더 순서 변경',
+      summary: '저장한 폴더를 다른 위치나 그룹으로 이동',
+      whenToUse:
+        '메뉴 막대와 앱 창에서 폴더가 표시되는 위치를 바꿀 때 사용합니다. 위치는 폴더가 속한 구역 안에서 세며 1이 맨 위입니다. 구역의 항목 수보다 큰 수를 지정하면 맨 아래로 이동합니다. 그룹을 지정하면 해당 그룹으로 이동하고 ungrouped를 지정하면 그룹에서 제외합니다.',
+      input: {
+        path: { label: '폴더', description: 'folders.list가 보고하는 저장된 경로입니다.' },
+        position: { label: '위치', description: '구역 안에서 이동할 위치입니다. 맨 위 위치 번호는 1입니다.' },
+        group: { label: '그룹', description: '폴더를 이동할 그룹입니다. 이미 있는 그룹이어야 합니다.' },
+        ungrouped: { label: '그룹 제외', description: '폴더를 그룹에서 제외합니다.' },
+      },
+    },
+
+    'folders.rename': {
+      title: '저장한 폴더 이름 변경',
+      summary: '저장한 폴더의 표시 이름 변경',
+      whenToUse:
+        '목록에서 폴더를 알아보기 쉬운 이름으로 표시할 때 사용합니다. 표시되는 이름만 바뀌며 실제 폴더 이름은 그대로 유지됩니다. 이름을 지정하지 않으면 원래 폴더 이름으로 되돌아갑니다.',
+      input: {
+        path: { label: '폴더', description: 'folders.list가 보고하는 저장된 경로입니다.' },
+        name: { label: '이름', description: '표시할 이름입니다. 지정하지 않으면 폴더 이름을 사용합니다.' },
+      },
+    },
+
+    'folders.open': {
+      title: '저장한 폴더 열기',
+      summary: '저장한 폴더를 Finder에서 열기',
+      whenToUse:
+        '저장한 폴더 중 하나를 열 때 사용합니다. 경로가 목록에 있어야 하며 연결되지 않은 외장 디스크의 폴더는 열지 않고 그 사실을 보고합니다.',
+      input: {
+        path: { label: '폴더', description: 'folders.list가 보고하는 저장된 경로입니다.' },
+      },
+    },
+
+    'folders.add-group': {
+      title: '폴더 그룹 추가',
+      summary: '저장한 폴더를 묶을 그룹 만들기',
+      whenToUse:
+        '한 프로젝트의 폴더처럼 관련된 폴더를 메뉴 막대와 앱 창에서 하나의 제목 아래 묶을 때 사용합니다. 그룹은 선택 사항이며 그룹이 없는 폴더는 맨 위에 표시됩니다. 대소문자를 구분하지 않고 기존 그룹과 다른 이름이어야 합니다.',
+      input: {
+        name: { label: '이름', description: '새 그룹의 이름입니다.' },
+        position: { label: '위치', description: '그룹 목록에서 놓을 위치입니다. 1부터 세며 지정하지 않으면 맨 뒤에 추가됩니다.' },
+      },
+    },
+
+    'folders.rename-group': {
+      title: '폴더 그룹 이름 변경',
+      summary: '그룹 이름 변경',
+      whenToUse:
+        '저장한 폴더 그룹의 이름을 바꿀 때 사용합니다. 그룹 안의 폴더는 그대로 유지됩니다.',
+      input: {
+        group: { label: '그룹', description: 'folders.list가 보고하는 그룹 이름입니다.' },
+        name: { label: '새 이름', description: '그룹에 지정할 이름입니다.' },
+      },
+    },
+
+    'folders.remove-group': {
+      title: '폴더 그룹 삭제',
+      summary: '그룹을 삭제하고 폴더는 유지',
+      whenToUse:
+        '그룹 제목을 삭제할 때 사용합니다. 그룹 안의 폴더는 삭제되지 않고 그룹이 없는 구역의 끝으로 이동하며 디스크의 내용은 변경되지 않습니다.',
+      input: {
+        group: { label: '그룹', description: 'folders.list가 보고하는 그룹 이름입니다.' },
+      },
+    },
+
+    'folders.reorder-group': {
+      title: '폴더 그룹 순서 변경',
+      summary: '그룹을 다른 위치로 이동',
+      whenToUse:
+        '그룹 제목의 순서를 바꿀 때 사용합니다. 1이 첫 번째 그룹이며 그룹이 없는 폴더는 항상 모든 그룹보다 앞에 표시됩니다.',
+      input: {
+        group: { label: '그룹', description: 'folders.list가 보고하는 그룹 이름입니다.' },
+        position: { label: '위치', description: '이동할 위치입니다. 맨 위 위치 번호는 1입니다.' },
       },
     },
   },

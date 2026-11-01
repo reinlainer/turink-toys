@@ -1,12 +1,14 @@
 'use strict';
 
 const path = require('path');
-const { app, BrowserWindow, Tray, Menu, ipcMain, dialog, shell, nativeImage, nativeTheme } = require('electron');
+const fs = require('fs');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, dialog, shell, nativeImage, nativeTheme } = require('electron');
 const core = require('@turink/core');
 const watcher = require('./watcher');
 const appMenu = require('./menu');
 const updates = require('./updates');
 const UI_STRINGS = require('./strings');
+const trayMenu = require('./tray-menu');
 
 const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
 
@@ -133,9 +135,94 @@ function setLoginItem(enabled) {
 
 // ---------------------------------------------------------------- tray
 
-// The tray only opens the window and quits. Status, running tasks and settings
-// live in the window, so the menu never needs rebuilding. It is English in
-// every locale, like the macOS menu bar extras it sits beside.
+// The tray opens saved folders, opens the window and quits. Status, running
+// tasks and settings live in the window. Its contents are built in tray-menu.js.
+
+async function savedFolders() {
+  try {
+    const outcome = await execute.runTask('folders.list', {}, { source: 'app', ephemeral: true });
+    return outcome.result;
+  } catch {
+    return { folders: [], groups: [] };
+  }
+}
+
+function notify(body) {
+  if (Notification.isSupported()) new Notification({ title: DISPLAY_NAME, body, silent: true }).show();
+}
+
+// Folders arrive from the Add dialog or from a drop on the menu bar icon. Each
+// goes through folders.add so the command line would accept the same paths.
+async function addFolders(paths) {
+  const t = (key, fallback, params) => i18n.t(locale, key, fallback, params);
+  const added = [];
+  let skipped = 0;
+  for (const target of paths) {
+    try {
+      const outcome = await execute.runTask('folders.add', { path: target }, { source: 'app', ephemeral: true });
+      if (outcome.result.added) added.push(path.basename(outcome.result.path));
+      else skipped += 1;
+    } catch {
+      skipped += 1;
+    }
+  }
+  foldersChanged();
+  if (added.length === 1) notify(t('notify.folderAdded', 'Added {name} to Folders.', { name: added[0] }));
+  else if (added.length > 1) notify(t('notify.foldersAdded', 'Added {count} folders to Folders.', { count: added.length }));
+  else if (skipped > 0) notify(t('notify.folderNotAdded', 'Nothing was added. Only folders not already in the list can be added.'));
+}
+
+async function pickFolders() {
+  const picked = await dialog.showOpenDialog({ properties: ['openDirectory', 'multiSelections', 'createDirectory'] });
+  if (!picked.canceled) await addFolders(picked.filePaths);
+}
+
+// A window that is open switches screens; a new one opens on the screen
+// remembered as the last, which is how the renderer picks where to start.
+function showScreen(id) {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isLoading()) {
+    createWindow();
+    send('screen:show', id);
+    return;
+  }
+  settings.set('lastTask', `screen:${id}`);
+  createWindow();
+}
+
+async function openFolder(folder) {
+  const error = await shell.openPath(folder.path);
+  if (error) notify(i18n.t(locale, 'notify.folderOpenFailed', 'Could not open {name}.', { name: folder.name }));
+}
+
+async function buildTrayMenu() {
+  const { folders, groups } = await savedFolders();
+  return Menu.buildFromTemplate(
+    trayMenu.template(
+      folders,
+      groups,
+      {
+        open: (folder) => openFolder(folder),
+        add: () => pickFolders(),
+        edit: () => showScreen('folders'),
+        window: () => createWindow(),
+      },
+      DISPLAY_NAME
+    )
+  );
+}
+
+async function refreshTray() {
+  if (!tray) return;
+  tray.setContextMenu(await buildTrayMenu());
+}
+
+// The list can change in the window, from the menu, or from the command line,
+// so every change ends here: the menu is rebuilt and an open window reloads.
+function foldersChanged() {
+  refreshTray();
+  send('folders:changed');
+}
+
 function createTray() {
   // A template image lets macOS invert the mark for a light or dark menu bar
   // and dim it when the application is not frontmost. Naming the file
@@ -144,13 +231,43 @@ function createTray() {
   icon.setTemplateImage(true);
   tray = new Tray(icon);
   tray.setToolTip(DISPLAY_NAME);
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: `Open ${DISPLAY_NAME}`, click: () => createWindow() },
-      { type: 'separator' },
-      { label: 'Quit', role: 'quit' },
-    ])
-  );
+  refreshTray();
+
+  // Dropping folders from Finder onto the icon saves them without opening
+  // anything. Files are not folders and are left out.
+  tray.on('drop-files', (event, files) => {
+    const folders = files.filter((file) => {
+      try {
+        return fs.statSync(file).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+    if (folders.length === 0) {
+      notify(i18n.t(locale, 'notify.onlyFolders', 'Only folders can be added.'));
+      return;
+    }
+    addFolders(folders);
+  });
+}
+
+// The command line and agents write the same settings file. Watching it keeps
+// the menu in step with them, and watching /Volumes greys out a folder on a
+// disk the moment it is ejected.
+function watchFolderSources() {
+  const current = () => JSON.stringify([settings.get('folders', []), settings.get('folderGroups', [])]);
+  let last = current();
+  fs.watchFile(settings.FILE, { interval: 1500 }, () => {
+    const now = current();
+    if (now === last) return;
+    last = now;
+    foldersChanged();
+  });
+  try {
+    fs.watch('/Volumes', () => foldersChanged());
+  } catch {
+    // Without /Volumes there are no external disks to follow.
+  }
 }
 
 function buildMenu() {
@@ -372,11 +489,13 @@ ipcMain.handle('shell:external', (event, url) => {
 });
 
 // Reading state a screen shows, such as the application list or the power
-// settings, is not something a person did, so it leaves no journal entry. The
-// core only honours this for read-only tasks.
+// settings, is not something a person did, so it leaves no journal entry. Nor
+// is editing a preference such as the folder list. The core only honours this
+// for read-only and preference tasks.
 ipcMain.handle('task:peek', async (event, { taskId, input }) => {
   try {
     const outcome = await runInWorker(taskId, input || {}, { source: 'app', ephemeral: true });
+    if (registry.get(taskId).preference) refreshTray();
     return { ok: true, ...outcome };
   } catch (failure) {
     return { ok: false, error: i18n.localizeError(failure.error, locale) };
@@ -524,6 +643,7 @@ app.whenReady().then(() => {
   buildMenu();
   createWindow();
   createTray();
+  watchFolderSources();
 
   // A run started from the command line or a quick action writes to the same
   // journal directory. Watching it is what lets someone see an agent working
@@ -539,7 +659,7 @@ app.whenReady().then(() => {
   watcher.watchRuns(
     (update) => {
       send('run:external', update);
-      },
+    },
     (runId) => localRuns.has(runId)
   );
 

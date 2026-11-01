@@ -90,7 +90,9 @@
 
   let toastTimer = null;
 
-  function toast(text, tone) {
+  // An action, such as Undo, adds a button and keeps the toast up long enough
+  // to reach it.
+  function toast(text, tone, action) {
     clearTimeout(toastTimer);
     ui.toast.className = `toast ${tone || 'busy'}`;
     ui.toast.querySelector('.toast-text').textContent = text;
@@ -99,11 +101,22 @@
     if (tone === 'done') slot.appendChild(icon('check'));
     else if (tone === 'error') slot.appendChild(icon('alert'));
     else slot.appendChild(el('span', 'spinner'));
+    const previous = ui.toast.querySelector('.toast-action');
+    if (previous) previous.remove();
+    if (action) {
+      const button = el('button', 'toast-action', action.label);
+      button.type = 'button';
+      button.addEventListener('click', () => {
+        ui.toast.hidden = true;
+        action.run();
+      });
+      ui.toast.appendChild(button);
+    }
     ui.toast.hidden = false;
     if (tone === 'done' || tone === 'error') {
       toastTimer = setTimeout(() => {
         ui.toast.hidden = true;
-      }, tone === 'error' ? 6000 : 2600);
+      }, action ? 6000 : tone === 'error' ? 6000 : 2600);
     }
   }
 
@@ -409,6 +422,12 @@
     term.push(record, true);
     noteActivity();
     if (current && current.onExternal) current.onExternal(record);
+  });
+  window.turink.onShowScreen((id) => {
+    if (screens.some((screen) => screen.id === id)) show(id);
+  });
+  window.turink.onFoldersChanged(() => {
+    if (current && current.onFoldersChanged) current.onFoldersChanged();
   });
   window.turink.onPrefill(({ task, input }) => {
     const screen = screenForTask(task);

@@ -7,8 +7,9 @@
 (function () {
   const screens = (window.TurinkScreens = window.TurinkScreens || []);
 
-  const KEEP_AWAKE_CHOICES = [30, 60, 120, 240];
-  const LID_CHOICES = [60, 120, 240, 480];
+  // Both cards offer the same durations so a person does not have to relearn
+  // the choice. The lid task caps its restore timer at twelve hours.
+  const DURATION_CHOICES = [60, 120, 240, 480, 720];
 
   screens.push({
     id: 'power',
@@ -155,7 +156,7 @@
           points: t().keepAwakePoints,
           active: st.keepAwake.active,
           activeText: st.keepAwake.active && st.keepAwake.expiresAt ? format(t().keepAwakeActive, { time: clock(st.keepAwake.expiresAt) }) : '',
-          values: KEEP_AWAKE_CHOICES,
+          values: DURATION_CHOICES,
           chosen: state.keepAwakeMinutes,
           onPick: (value) => {
             state.keepAwakeMinutes = value;
@@ -177,7 +178,7 @@
           warning: t().lidWarning,
           active: st.lidSleepDisabled,
           activeText: st.lidRestoreAt ? format(t().lidActive, { time: clock(st.lidRestoreAt) }) : t().lidActiveNoRestore,
-          values: LID_CHOICES,
+          values: DURATION_CHOICES,
           chosen: state.lidMinutes,
           onPick: (value) => {
             state.lidMinutes = value;

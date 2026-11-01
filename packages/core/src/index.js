@@ -16,6 +16,13 @@ require('./tasks/power/keep-awake');
 require('./tasks/apps/list');
 require('./tasks/apps/uninstall');
 require('./tasks/apps/restore');
+require('./tasks/folders/list');
+require('./tasks/folders/add');
+require('./tasks/folders/remove');
+require('./tasks/folders/reorder');
+require('./tasks/folders/rename');
+require('./tasks/folders/open');
+require('./tasks/folders/group-tasks');
 
 module.exports = {
   registry: require('./kernel/registry'),

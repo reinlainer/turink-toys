@@ -19,7 +19,7 @@ async function runTask(taskId, rawInput, options = {}) {
     taskId: task.id,
     source: options.source || 'cli',
     onEvent: options.onEvent || null,
-    ephemeral: options.ephemeral === true && task.risk === 'read',
+    ephemeral: options.ephemeral === true && (task.risk === 'read' || task.preference),
   });
 
   // The caller needs the identifier before the work finishes so it can follow a

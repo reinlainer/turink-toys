@@ -55,6 +55,10 @@ function defineTask(spec) {
     cost: spec.cost,
     accepts: spec.accepts || null,
     idempotent: spec.idempotent === true,
+    // A preference task only edits this tool's own settings, such as the
+    // folder list. Changing a preference is not work done on the machine, so a
+    // front end may run it without leaving a journal entry.
+    preference: spec.preference === true,
     input: spec.input,
     output: spec.output || null,
     errors: spec.errors || [],

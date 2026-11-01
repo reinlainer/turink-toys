@@ -29,6 +29,11 @@
     chevron: '<path d="M7.5 5l5 5-5 5"/>',
     lid: '<rect x="4" y="4" width="12" height="8" rx="1"/><path d="M2 15h16"/>',
     moon: '<path d="M15.5 12.2A6.5 6.5 0 0 1 7.8 4.5a6.5 6.5 0 1 0 7.7 7.7z"/>',
+    grip: '<circle cx="7.5" cy="5.5" r="1"/><circle cx="12.5" cy="5.5" r="1"/><circle cx="7.5" cy="10" r="1"/><circle cx="12.5" cy="10" r="1"/><circle cx="7.5" cy="14.5" r="1"/><circle cx="12.5" cy="14.5" r="1"/>',
+    pencil: '<path d="M12.5 4.5l3 3-8.5 8.5H4v-3z"/><path d="M11 6l3 3"/>',
+    copy: '<rect x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 4 5v6a1.5 1.5 0 0 0 1.5 1.5H7"/>',
+    external: '<path d="M11.5 3.5h5v5"/><path d="M16.5 3.5L9.5 10.5"/><path d="M15 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4"/>',
+    plus: '<path d="M10 4.5v11M4.5 10h11"/>',
     display: '<rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M7.5 17h5M10 13.5V17"/>',
   };
 
