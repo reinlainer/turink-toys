@@ -16,21 +16,40 @@ function actions() {
     open: (f) => calls.push(['open', f.path]),
     add: () => calls.push(['add']),
     edit: () => calls.push(['edit']),
+    screen: (id) => calls.push(['screen', id]),
     window: () => calls.push(['window']),
   };
 }
 
-test('the top level holds Folders, the window and Quit', () => {
+test('the top level holds the screens and Folders, then the window and Quit', () => {
   const menu = template([], [], actions(), 'Turink Toys');
   assert.deepStrictEqual(
     menu.map((item) => item.label || item.type),
-    ['Folders', 'separator', 'Open Turink Toys', 'separator', 'Quit']
+    ['Applications', 'Power', 'Folders', 'separator', 'Open Turink Toys', 'Quit']
   );
-  assert.strictEqual(menu[4].role, 'quit');
+  assert.ok(menu[2].submenu);
+  assert.strictEqual(menu[5].role, 'quit');
+});
+
+test('screen items carry the names they are given, the rest stays English', () => {
+  const menu = template([], [], actions(), 'Turink Toys', { apps: '앱 관리', power: '전원', folders: '폴더' });
+  assert.deepStrictEqual(
+    menu.map((item) => item.label || item.type),
+    ['앱 관리', '전원', '폴더', 'separator', 'Open Turink Toys', 'Quit']
+  );
+});
+
+test('the screen items open the window on their screen', () => {
+  const a = actions();
+  const menu = template([], [], a, 'Turink Toys');
+  menu.find((item) => item.label === 'Applications').click();
+  menu.find((item) => item.label === 'Power').click();
+  menu.find((item) => item.label === 'Open Turink Toys').click();
+  assert.deepStrictEqual(a.calls, [['screen', 'apps'], ['screen', 'power'], ['window']]);
 });
 
 test('an empty list says so and still offers adding', () => {
-  const sub = template([], [], actions(), 'Turink Toys')[0].submenu;
+  const sub = template([], [], actions(), 'Turink Toys').find((item) => item.submenu).submenu;
   assert.deepStrictEqual(sub.map((item) => item.label || item.type), ['No folders yet', 'separator', 'Add Folder…', 'Edit Folders…']);
   assert.strictEqual(sub[0].enabled, false);
 });
@@ -45,7 +64,7 @@ test('each folder opens on click and shows where it lives', () => {
     [],
     a,
     'Turink Toys'
-  )[0].submenu;
+  ).find((item) => item.submenu).submenu;
 
   assert.strictEqual(sub[0].label, 'x');
   assert.strictEqual(sub[0].sublabel, 'Desktop › … › turink › labs › src');
@@ -60,7 +79,7 @@ test('each folder opens on click and shows where it lives', () => {
 
 test('the submenu ends with adding and editing', () => {
   const a = actions();
-  const sub = template([folder()], [], a, 'Turink Toys')[0].submenu;
+  const sub = template([folder()], [], a, 'Turink Toys').find((item) => item.submenu).submenu;
   sub.find((item) => item.label === 'Add Folder…').click();
   sub.find((item) => item.label === 'Edit Folders…').click();
   assert.deepStrictEqual(a.calls, [['add'], ['edit']]);
@@ -77,7 +96,7 @@ test('groups become headings inside the one submenu', () => {
     [{ name: 'Home', count: 1 }, { name: 'Empty', count: 0 }, { name: 'Work', count: 2 }],
     actions(),
     'Turink Toys'
-  )[0].submenu;
+  ).find((item) => item.submenu).submenu;
   assert.deepStrictEqual(
     sub.map((item) => (item.type === 'header' ? `[${item.label}]` : item.label || item.type)),
     ['loose', 'separator', '[Home]', 'h1', 'separator', '[Work]', 'w1', 'w2', 'separator', 'Add Folder…', 'Edit Folders…']
@@ -86,6 +105,6 @@ test('groups become headings inside the one submenu', () => {
 });
 
 test('with only grouped folders the submenu starts with a heading', () => {
-  const sub = template([folder({ group: 'Work' })], [{ name: 'Work', count: 1 }], actions(), 'Turink Toys')[0].submenu;
+  const sub = template([folder({ group: 'Work' })], [{ name: 'Work', count: 1 }], actions(), 'Turink Toys').find((item) => item.submenu).submenu;
   assert.deepStrictEqual(sub.slice(0, 2).map((item) => item.type || 'item'), ['header', 'item']);
 });

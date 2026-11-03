@@ -231,8 +231,9 @@ generated from its manifest, so a new task is reachable from the window before
 anyone designs a screen for it. Each action has a button that copies the same
 work as a terminal command, to paste into a script or hand to an agent.
 
-A menu bar item carries the current lid setting, anything still running, and a
-shortcut to compress a selection.
+A menu bar item opens the Applications and Power screens, saved folders, and the
+window where it was left. The items named after a screen follow the window's
+language.
 
 The Activity panel, closed by default, shows runs as they happen, including
 ones this window did not start. A task invoked from the terminal or from a

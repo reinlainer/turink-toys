@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('turink', {
   loginItem: () => ipcRenderer.invoke('login:get'),
   setLoginItem: (enabled) => ipcRenderer.invoke('login:set', enabled),
   openExternal: (url) => ipcRenderer.invoke('shell:external', url),
+  openSettings: (pane) => ipcRenderer.invoke('shell:settings', pane),
 
   onEvent: (handler) => ipcRenderer.on('run:event', (event, record) => handler(record)),
   onStarted: (handler) => ipcRenderer.on('run:started', (event, payload) => handler(payload)),

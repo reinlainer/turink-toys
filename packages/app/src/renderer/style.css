@@ -506,6 +506,7 @@ label.row.disabled:hover { background: none; }
 
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -519,6 +520,7 @@ label.row.disabled:hover { background: none; }
 .tile-label { color: var(--ink-3); font-size: 12px; }
 .tile-value { font-size: 15px; font-weight: 600; }
 .tile-note { color: var(--ink-3); font-size: 11.5px; }
+.tile-link { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
 .tile.on { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
 .tile.on .tile-icon, .tile.on .tile-value { color: var(--accent-text); }
 

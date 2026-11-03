@@ -1,10 +1,12 @@
 'use strict';
 
 const folderNames = require('./renderer/folder-names');
+const strings = require('./strings');
 
 // The menu bar menu, kept apart from Electron so its contents can be tested
-// without a running app. It is English in every locale, like the macOS menu
-// bar extras it sits beside; folder names are the person's own.
+// without a running app. The items named after a screen carry that screen's
+// name in the window's language, passed in as `screens`; everything else is
+// English in every locale, and folder names are the person's own.
 
 const PLACE_NAMES = {
   desktop: 'Desktop',
@@ -32,7 +34,7 @@ function folderItem(folder, actions) {
 // folder that cannot be reached is shown but cannot be chosen. Groups become
 // headings inside that one submenu rather than submenus of their own, so any
 // folder is still two clicks away; a group with no folders is left out.
-function template(folders, groups, actions, appName) {
+function template(folders, groups, actions, appName, screens = strings.nav) {
   const items = folders.filter((folder) => !folder.group).map((folder) => folderItem(folder, actions));
   for (const group of groups) {
     const members = folders.filter((folder) => folder.group === group.name);
@@ -44,8 +46,11 @@ function template(folders, groups, actions, appName) {
   if (items.length === 0) items.push({ label: 'No folders yet', enabled: false });
 
   return [
+    // The screens used most get their own way in; the rest open in the window.
+    { label: screens.apps, click: () => actions.screen('apps') },
+    { label: screens.power, click: () => actions.screen('power') },
     {
-      label: 'Folders',
+      label: screens.folders,
       submenu: [
         ...items,
         { type: 'separator' },
@@ -55,7 +60,6 @@ function template(folders, groups, actions, appName) {
     },
     { type: 'separator' },
     { label: `Open ${appName}`, click: () => actions.window() },
-    { type: 'separator' },
     { label: 'Quit', role: 'quit' },
   ];
 }

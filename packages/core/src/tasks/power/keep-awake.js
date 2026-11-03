@@ -29,7 +29,7 @@ register(
           type: 'integer',
           minimum: 1,
           maximum: 1440,
-          default: 60,
+          default: 120,
           description: 'How long to suppress idle sleep.',
         },
         off: {
@@ -48,7 +48,7 @@ register(
       },
     },
     examples: [
-      { description: 'Stay awake for two hours', command: 'turink-toys power.keep-awake --minutes 120' },
+      { description: 'Stay awake for four hours', command: 'turink-toys power.keep-awake --minutes 240' },
       { description: 'Stop early', command: 'turink-toys power.keep-awake --off' },
     ],
     present(result, t) {

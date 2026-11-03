@@ -211,6 +211,7 @@ module.exports = {
       autoSleepAfter: '{minutes}분 동안 사용하지 않을 때',
       displayState: '디스플레이 끄기',
       displayNever: '안 함',
+      displaySettings: '시스템 설정에서 변경',
       sourceAdapter: '전원 어댑터 사용 시 설정',
       sourceBattery: '배터리 사용 시 설정',
       minutes: '{minutes}분',

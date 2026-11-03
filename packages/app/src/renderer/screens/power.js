@@ -10,6 +10,8 @@
   // Both cards offer the same durations so a person does not have to relearn
   // the choice. The lid task caps its restore timer at twelve hours.
   const DURATION_CHOICES = [60, 120, 240, 480, 720];
+  // The same starting choice for both, matching the tasks' own defaults.
+  const DEFAULT_MINUTES = 120;
 
   screens.push({
     id: 'power',
@@ -19,7 +21,7 @@
     mount(root, ctx) {
       const { el, icon, s, format } = ctx;
       const t = () => s().power;
-      const state = { status: null, keepAwakeMinutes: 60, lidMinutes: 120 };
+      const state = { status: null, keepAwakeMinutes: DEFAULT_MINUTES, lidMinutes: DEFAULT_MINUTES };
 
       root.appendChild(ctx.header(s().nav.power, t().subtitle));
       const tiles = el('section', 'tiles');
@@ -50,9 +52,19 @@
         render();
       }
 
-      function tile(iconName, label, value, note, tone) {
+      // A setting this app does not change itself can link to where macOS keeps it.
+      function tile(iconName, label, value, note, tone, link) {
         const node = el('div', 'tile' + (tone ? ` ${tone}` : ''));
         node.appendChild(icon(iconName, 'tile-icon'));
+        if (link) {
+          const button = el('button', 'icon-button tile-link');
+          button.type = 'button';
+          button.title = link.label;
+          button.setAttribute('aria-label', link.label);
+          button.appendChild(icon('arrow-up-right', null, 15));
+          button.addEventListener('click', link.open);
+          node.appendChild(button);
+        }
         node.appendChild(el('span', 'tile-label', label));
         node.appendChild(el('span', 'tile-value', value));
         if (note) node.appendChild(el('span', 'tile-note', note));
@@ -86,7 +98,9 @@
             'display',
             t().displayState,
             st.displaySleepMinutes ? format(t().minutes, { minutes: st.displaySleepMinutes }) : t().displayNever,
-            sourceNote(st)
+            sourceNote(st),
+            null,
+            { label: t().displaySettings, open: () => window.turink.openSettings('display') }
           )
         );
       }

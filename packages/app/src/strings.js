@@ -160,6 +160,7 @@ module.exports = {
     idlePrevented: 'On, {minutes} min left',
     displayState: 'Display turns off after',
     displayNever: 'Never',
+    displaySettings: 'Change in System Settings',
     autoSleep: 'Sleeps when idle: {value}',
     autoSleepNever: 'never',
     autoSleepWithDisplay: 'when the display turns off',

@@ -135,8 +135,9 @@ function setLoginItem(enabled) {
 
 // ---------------------------------------------------------------- tray
 
-// The tray opens saved folders, opens the window and quits. Status, running
-// tasks and settings live in the window. Its contents are built in tray-menu.js.
+// The tray opens the Applications or Power screen, saved folders, the window
+// where it was left, and quits. Status, running tasks and settings
+// live in the window. Its contents are built in tray-menu.js.
 
 async function savedFolders() {
   try {
@@ -204,9 +205,11 @@ async function buildTrayMenu() {
         open: (folder) => openFolder(folder),
         add: () => pickFolders(),
         edit: () => showScreen('folders'),
+        screen: (id) => showScreen(id),
         window: () => createWindow(),
       },
-      DISPLAY_NAME
+      DISPLAY_NAME,
+      buildUiStrings().nav
     )
   );
 }
@@ -311,6 +314,7 @@ ipcMain.handle('i18n:set', (event, next) => {
   locale = i18n.normalize(next);
   settings.set('locale', locale);
   buildMenu();
+  refreshTray();
   return { locale, ui: buildUiStrings(), tasks: taskPayload() };
 });
 
@@ -486,6 +490,16 @@ ipcMain.handle('shell:external', (event, url) => {
   // Only the two addresses this application owns are ever opened, so a page
   // cannot turn this into a way to launch arbitrary links.
   if (url === HOMEPAGE || url === SOURCE) shell.openExternal(url);
+});
+
+// System Settings panes a screen links to, by name, for the same reason. The
+// display sleep timer lives under Lock Screen.
+const SETTINGS_PANES = {
+  display: 'x-apple.systempreferences:com.apple.Lock-Screen-Settings.extension',
+};
+
+ipcMain.handle('shell:settings', (event, pane) => {
+  if (Object.hasOwn(SETTINGS_PANES, pane)) shell.openExternal(SETTINGS_PANES[pane]);
 });
 
 // Reading state a screen shows, such as the application list or the power
