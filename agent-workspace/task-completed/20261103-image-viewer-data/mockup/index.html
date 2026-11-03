@@ -1,0 +1,1460 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이미지 뷰어 시안</title>
+<style>
+/* Tokens copied from packages/app/src/renderer/style.css so the mockup reads as the real app. */
+:root {
+  --window: #f4f5f7; --sidebar: #ebedf0; --surface: #ffffff; --surface-2: #f4f6f7;
+  --hover: rgba(15, 30, 40, 0.05); --ink: #15191c; --ink-2: #4c5761; --ink-3: #7c8791;
+  --line: #e2e6ea; --line-strong: #cfd5db; --accent: #0e7178; --accent-ink: #ffffff;
+  --accent-soft: #e2f1f1; --accent-text: #0b5f65; --danger: #c2462a;
+  --shadow: 0 1px 2px rgba(16, 24, 32, 0.05), 0 1px 1px rgba(16, 24, 32, 0.03);
+  --shadow-raised: 0 8px 24px rgba(16, 24, 32, 0.12), 0 2px 6px rgba(16, 24, 32, 0.06);
+  --radius: 12px; --radius-sm: 8px;
+  --sans: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+  --desk: #c9d3dc; --bar: #1f2328; --bar-ink: #e9edf1;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --window: #17191c; --sidebar: #1d2024; --surface: #212429; --surface-2: #272b31;
+    --hover: rgba(255, 255, 255, 0.05); --ink: #eceff2; --ink-2: #aab3bc; --ink-3: #7f8a94;
+    --line: #2f343a; --line-strong: #3c424a; --accent: #3fb3ba; --accent-ink: #0b2224;
+    --accent-soft: #173a3d; --accent-text: #7fd3d8; --danger: #e0694c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3); --shadow-raised: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --desk: #0d0f12; --bar: #0a0b0d;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; font-family: var(--sans); font-size: 13px; line-height: 1.45; color: var(--ink);
+  background: var(--desk); overflow: hidden; -webkit-font-smoothing: antialiased;
+  word-break: keep-all; user-select: none; display: flex; flex-direction: column;
+}
+button { font: inherit; color: inherit; }
+input, select { font: inherit; color: inherit; }
+h1, h2, p { margin: 0; }
+.icon { display: inline-flex; flex: none; }
+.icon svg { display: block; }
+
+/* ---------------------------------------------------- mockup bar */
+.mock-bar {
+  flex: none; display: flex; align-items: center; gap: 14px; padding: 8px 16px;
+  background: var(--bar); color: var(--bar-ink); font-size: 12px; flex-wrap: wrap;
+}
+.mock-title { font-weight: 650; letter-spacing: -0.01em; }
+.mock-tag { padding: 1px 7px; border-radius: 999px; background: #3a4048; font-size: 11px; }
+.mock-group { display: flex; align-items: center; gap: 6px; }
+.mock-group label { opacity: 0.7; }
+.mock-bar select, .mock-bar button {
+  background: #2c3138; color: var(--bar-ink); border: 1px solid #434a53; border-radius: 6px;
+  padding: 3px 8px; font-size: 12px; cursor: pointer;
+}
+.mock-bar button[aria-pressed="true"] { background: #e9edf1; color: #15191c; }
+.mock-spacer { flex: 1; }
+.mock-hint { opacity: 0.7; font-size: 11.5px; }
+
+/* ---------------------------------------------------- stage and windows */
+.stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.win {
+  position: absolute; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 0 0 0.5px rgba(0,0,0,.25), 0 22px 60px rgba(0,0,0,.28), 0 4px 14px rgba(0,0,0,.12);
+}
+.app-win { inset: 18px; max-width: 1320px; margin: 0 auto; background: var(--window); display: grid; grid-template-columns: 196px minmax(0, 1fr); }
+.lights { display: flex; gap: 8px; }
+.lights span { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.2); }
+.lights span:nth-child(2) { background: #febc2e; }
+.lights span:nth-child(3) { background: #28c840; }
+.lights button { all: unset; width: 12px; height: 12px; border-radius: 50%; cursor: pointer; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0,0,0,.25); }
+.lights button:nth-child(2) { background: #febc2e; }
+.lights button:nth-child(3) { background: #28c840; }
+
+/* ---------------------------------------------------- app sidebar */
+.sidebar { background: var(--sidebar); border-right: 1px solid var(--line); padding: 0 10px 12px; display: flex; flex-direction: column; min-height: 0; }
+.sidebar .lights { padding: 14px 6px 20px; }
+.brand { display: flex; align-items: center; gap: 9px; padding: 0 8px 16px; }
+.brand-mark { width: 26px; height: 26px; border-radius: 7px; background: linear-gradient(135deg, #1b2a3a, #0e7178); }
+.brand-name { font-weight: 650; font-size: 14px; letter-spacing: -0.01em; }
+.nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px; color: var(--ink-2); border: 0; background: none; text-align: left; cursor: default; }
+.nav-item .icon { color: var(--ink-3); }
+.nav-item.current { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+.nav-item.current .icon { color: var(--accent); }
+.nav-new { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--accent-text); background: var(--accent-soft); padding: 0 6px; border-radius: 999px; }
+
+/* ---------------------------------------------------- image screen */
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 18px 12px; border-bottom: 1px solid var(--line); }
+.place-button {
+  display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 8px; border-radius: 8px;
+  border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer; font-weight: 600; max-width: 220px;
+}
+.place-button .icon { color: var(--accent); }
+.place-button .icon:last-child { color: var(--ink-3); }
+.back-button { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 4px 8px 4px 4px; border-radius: 6px; cursor: pointer; color: var(--accent-text); }
+.back-button:hover { background: var(--hover); }
+.back-button .icon { transform: scaleX(-1); }
+.view-title { font-weight: 650; font-size: 13.5px; }
+.crumbs { display: flex; align-items: center; gap: 2px; color: var(--ink-3); min-width: 0; overflow: hidden; white-space: nowrap; }
+.crumb { border: 0; background: none; padding: 3px 6px; border-radius: 6px; cursor: pointer; color: var(--ink-2); }
+.crumb:hover { background: var(--hover); color: var(--ink); }
+.crumb.last { color: var(--ink); font-weight: 600; cursor: default; }
+.crumb.last:hover { background: none; }
+.tb-spacer { flex: 1; }
+.size-range { width: 90px; accent-color: var(--accent); }
+.seg { display: inline-flex; padding: 2px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); }
+.seg button { border: 0; background: none; padding: 3px 10px; border-radius: 6px; cursor: pointer; color: var(--ink-2); white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: var(--shadow); }
+.count-badge { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 11px; line-height: 17px; text-align: center; font-weight: 600; }
+
+.body { flex: 1; min-height: 0; display: flex; }
+.grid-col { flex: 1; min-width: 0; position: relative; display: flex; }
+.grid-wrap { flex: 1; min-width: 0; overflow-y: auto; padding: 14px 16px 80px; outline: none; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile), 1fr)); gap: 6px; }
+.tile { display: flex; flex-direction: column; gap: 5px; padding: 6px; border-radius: 10px; cursor: default; position: relative; }
+.tile:hover { background: var(--hover); }
+.tile.sel { background: var(--accent-soft); }
+.thumb { aspect-ratio: 1; border-radius: 6px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.thumb img { max-width: 100%; max-height: 100%; border-radius: 3px; box-shadow: 0 0 0 .5px rgba(0,0,0,.15), 0 1px 3px rgba(0,0,0,.12); display: block; }
+.tile-name { font-size: 11.5px; text-align: center; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile.sel .tile-name { color: var(--accent-text); font-weight: 600; }
+.tile-sub { font-size: 10.5px; text-align: center; color: var(--ink-3); margin-top: -4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.folder-thumb { color: var(--accent); background: var(--surface-2); }
+.folder-thumb .icon svg { width: 46%; height: auto; }
+.pick-dot {
+  position: absolute; top: 9px; right: 9px; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.empty { padding: 60px 20px; text-align: center; color: var(--ink-3); }
+
+.splitter { flex: none; width: 7px; cursor: col-resize; position: relative; }
+.splitter::after { content: ""; position: absolute; inset: 0 3px; background: var(--line); }
+.preview { flex: none; width: 40%; min-width: 260px; max-width: 70%; display: flex; flex-direction: column; background: var(--surface); }
+.preview-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 18px; background: var(--surface-2); }
+.preview-stage img { max-width: 100%; max-height: 100%; box-shadow: 0 0 0 .5px rgba(0,0,0,.15), 0 4px 16px rgba(0,0,0,.12); }
+.preview-info { padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); }
+.preview-name { font-size: 14px; font-weight: 650; word-break: break-all; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 14px; color: var(--ink-2); font-size: 12px; }
+.facts dt { color: var(--ink-3); }
+.facts dd { margin: 0; word-break: break-all; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer; }
+.button:hover { background: var(--surface-2); }
+.button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.button.on { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
+.kbd { font-size: 11px; color: var(--ink-3); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; margin-left: 2px; }
+.button.primary .kbd { color: inherit; border-color: rgba(255,255,255,.4); }
+
+.pick-bar {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px 7px 14px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line);
+  box-shadow: var(--shadow-raised); white-space: nowrap; max-width: calc(100% - 24px); flex-wrap: wrap; justify-content: center;
+}
+.pick-bar strong { color: var(--accent-text); }
+.text-button { border: 0; background: none; color: var(--accent-text); cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.text-button:hover { background: var(--hover); }
+
+.menu {
+  position: absolute; z-index: 20; min-width: 230px; padding: 6px; border-radius: 10px; background: var(--surface);
+  border: 1px solid var(--line); box-shadow: var(--shadow-raised);
+}
+.menu-head { font-size: 11px; color: var(--ink-3); padding: 6px 8px 3px; }
+.menu-item { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 6px 8px; border-radius: 6px; text-align: left; cursor: pointer; }
+.menu-item:hover { background: var(--accent); color: var(--accent-ink); }
+.menu-item .sub { margin-left: auto; color: var(--ink-3); font-size: 11px; }
+.menu-item:hover .sub { color: inherit; opacity: .8; }
+.menu-sep { height: 1px; background: var(--line); margin: 5px 4px; }
+
+.sheet { position: absolute; inset: 0; background: rgba(0,0,0,.18); display: flex; justify-content: center; align-items: flex-start; z-index: 30; }
+.sheet-body { margin-top: 0; width: 380px; background: var(--surface); border-radius: 0 0 12px 12px; box-shadow: var(--shadow-raised); padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.sheet-body h2 { font-size: 14px; }
+.dest { display: flex; flex-direction: column; gap: 2px; }
+.dest label { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.dest label:hover { background: var(--hover); }
+.dest .where { margin-left: auto; color: var(--ink-3); font-size: 11.5px; }
+.sheet-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.toast {
+  position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px 8px 14px; border-radius: 10px; background: #22272d; color: #eef1f4; box-shadow: var(--shadow-raised); white-space: nowrap;
+}
+.toast .text-button { color: #7fd3d8; }
+
+/* ---------------------------------------------------- viewer window */
+.viewer { background: #0f1113; z-index: 10; }
+.viewer.anim { transition: left .18s ease, top .18s ease, width .18s ease, height .18s ease; }
+.viewer.full { border-radius: 0; box-shadow: none; }
+.viewport { position: absolute; inset: 0; overflow: hidden; cursor: default; }
+.viewport.grab { cursor: grab; }
+.viewport.grabbing { cursor: grabbing; }
+.vimg { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; will-change: transform; pointer-events: none; }
+.edge-top {
+  position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: center; gap: 14px; padding: 0 12px;
+  background: linear-gradient(rgba(10,12,14,.82), rgba(10,12,14,.62)); color: #e9edf1; backdrop-filter: blur(14px);
+  opacity: 0; transform: translateY(-6px); transition: opacity .14s, transform .14s; cursor: default;
+}
+.edge-top.show { opacity: 1; transform: none; }
+.edge-title { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 10px; justify-content: center; white-space: nowrap; overflow: hidden; }
+.edge-title b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.edge-title span { color: #9aa5b0; font-size: 12px; }
+.vbtn { border: 0; background: none; color: #c9d1d9; padding: 4px 7px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.vbtn:hover { background: rgba(255,255,255,.1); color: #fff; }
+.vbtn.on { color: #7fd3d8; }
+.edge-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px; display: flex; gap: 6px; overflow-x: auto;
+  background: linear-gradient(rgba(10,12,14,.55), rgba(10,12,14,.85)); backdrop-filter: blur(14px);
+  opacity: 0; transform: translateY(8px); transition: opacity .14s, transform .14s; scrollbar-width: none;
+}
+.edge-bottom.show { opacity: 1; transform: none; }
+.strip-item { flex: none; width: 64px; height: 52px; border-radius: 5px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; opacity: .62; }
+.strip-item img { max-width: 100%; max-height: 100%; border-radius: 2px; }
+.strip-item:hover { opacity: 1; }
+.strip-item.cur { opacity: 1; box-shadow: 0 0 0 2px #3fb3ba; }
+.strip-item .pick-dot { top: -4px; right: -4px; width: 14px; height: 14px; box-shadow: 0 0 0 1.5px #111; }
+.strip-item .pick-dot svg { width: 9px; height: 9px; }
+.hud {
+  position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); padding: 6px 12px; border-radius: 999px;
+  background: rgba(20,23,27,.86); color: #f1f4f6; font-size: 12.5px; pointer-events: none; opacity: 0; transition: opacity .18s; white-space: nowrap;
+}
+.hud.show { opacity: 1; }
+.vpick { position: absolute; top: 12px; right: 12px; pointer-events: none; transition: opacity .14s; }
+.vpick .pick-dot { position: static; width: 26px; height: 26px; box-shadow: 0 0 0 2px rgba(0,0,0,.5); }
+.resize-grip { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 3; }
+
+/* ---------------------------------------------------- help */
+.help {
+  position: absolute; top: 12px; right: 12px; z-index: 50; width: 360px; max-height: calc(100% - 24px); overflow-y: auto;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow-raised); padding: 14px 16px;
+}
+.help h2 { font-size: 13px; margin: 6px 0 6px; }
+.help table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.help td { padding: 3px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.help td:first-child { color: var(--ink-2); width: 46%; }
+.help p { color: var(--ink-3); font-size: 11.5px; margin-top: 8px; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="mock-bar">
+  <span class="mock-title">이미지 뷰어 시안</span>
+  <span class="mock-tag">가짜 사진·폴더</span>
+  <div class="mock-group">
+    <label for="opt-wheel">마우스 휠</label>
+    <select id="opt-wheel">
+      <option value="nav">넘기기 · ⌘+휠 확대 (권장)</option>
+      <option value="zoom">확대 · ⌘+휠 넘기기</option>
+    </select>
+  </div>
+  <div class="mock-group">
+    <label for="opt-size">뷰어 창</label>
+    <select id="opt-size">
+      <option value="first">열 때만 사진에 맞춤 (권장)</option>
+      <option value="each">넘길 때마다 사진에 맞춤</option>
+      <option value="fixed">조절한 크기 기억</option>
+    </select>
+    <span class="mock-hint" id="opt-size-hint"></span>
+  </div>
+  <div class="mock-group"><label>감지된 입력</label><span class="mock-tag" id="input-kind">아직 없음</span></div>
+  <span class="mock-spacer"></span>
+  <button id="help-toggle" type="button" aria-pressed="false">단축키</button>
+</div>
+
+<div class="stage" id="stage">
+  <section class="win app-win" id="app-win">
+    <nav class="sidebar">
+      <div class="lights"><span></span><span></span><span></span></div>
+      <div class="brand"><span class="brand-mark"></span><span class="brand-name">Turink Toys</span></div>
+      <div class="nav" id="nav"></div>
+    </nav>
+    <div class="main" style="position: relative;">
+      <div class="toolbar">
+        <button class="place-button" id="place-button" type="button" title="다른 폴더 열기"></button>
+        <div class="crumbs" id="crumbs"></div>
+        <span class="tb-spacer"></span>
+        <input class="size-range" id="size-range" type="range" min="88" max="220" value="132" aria-label="썸네일 크기" title="썸네일 크기">
+      </div>
+      <div class="body">
+        <div class="grid-col">
+          <div class="grid-wrap" id="grid-wrap" tabindex="0"><div class="grid" id="grid"></div></div>
+          <div class="pick-bar" id="pick-bar" hidden></div>
+        </div>
+        <div class="splitter" id="splitter"></div>
+        <aside class="preview" id="preview"></aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="win viewer" id="viewer" hidden>
+    <div class="viewport" id="viewport"><img class="vimg" id="vimg" alt=""></div>
+    <div class="vpick" id="vpick"></div>
+    <div class="edge-top" id="edge-top">
+      <div class="lights"><button type="button" id="v-close" title="닫기 (Esc)"></button><button type="button" title="최소화"></button><button type="button" id="v-full-light" title="전체화면 (F)"></button></div>
+      <div class="edge-title" id="edge-title"></div>
+      <button class="vbtn" id="v-zoom" type="button" title="맞춤 (1) · 실제 크기 (0)"></button>
+      <button class="vbtn" id="v-lock" type="button" title="넘겨도 확대 비율 유지 (L)"></button>
+      <button class="vbtn" id="v-pick" type="button" title="이 사진 선택 (P)"></button>
+      <button class="vbtn" id="v-full" type="button" title="전체화면 (F)"></button>
+    </div>
+    <div class="edge-bottom" id="edge-bottom"></div>
+    <div class="hud" id="hud"></div>
+    <div class="resize-grip" id="resize-grip"></div>
+  </section>
+
+  <div class="help" id="help" hidden>
+    <h2>목록 화면</h2>
+    <table>
+      <tr><td>폴더·사진 사이 이동</td><td>← → ↑ ↓</td></tr>
+      <tr><td>뷰어 창으로 열기</td><td>더블클릭, Enter, Space</td></tr>
+      <tr><td>썸네일 크기</td><td>트랙패드 오므리기·벌리기, ⌘+휠</td></tr>
+      <tr><td>폴더 열기 · 위 폴더로</td><td>더블클릭, Enter · ⌘↑</td></tr>
+      <tr><td>이 사진 선택 · 해제</td><td>P</td></tr>
+      <tr><td>휴지통으로 이동</td><td>⌘⌫ (되돌리기 가능)</td></tr>
+    </table>
+    <h2>뷰어 창</h2>
+    <table>
+      <tr><td>이전 · 다음</td><td>← →, 마우스 휠, 트랙패드 두 손가락 좌우 쓸기(한 번에 한 장)</td></tr>
+      <tr><td>처음 · 마지막</td><td>Home · End</td></tr>
+      <tr><td>확대 · 축소</td><td>트랙패드 오므리기·벌리기, ⌘+휠, ⌘+ ⌘−</td></tr>
+      <tr><td>맞춤 ↔ 실제 크기</td><td>더블클릭(누른 지점 기준)</td></tr>
+      <tr><td>맞춤 · 너비 맞춤 · 실제 크기</td><td>1 · 2 · 0</td></tr>
+      <tr><td>확대 상태 이동</td><td>끌기, 트랙패드 두 손가락 스크롤</td></tr>
+      <tr><td>넘겨도 확대 비율 유지</td><td>L</td></tr>
+      <tr><td>이 사진 선택 · 해제</td><td>P</td></tr>
+      <tr><td>휴지통으로 이동</td><td>⌘⌫</td></tr>
+      <tr><td>전체화면 (지금 화면을 그대로 덮음)</td><td>F</td></tr>
+      <tr><td>닫고 목록으로</td><td>Esc, Space</td></tr>
+    </table>
+    <p>위쪽 가장자리에 마우스를 대면 파일 정보와 버튼이, 아래쪽 가장자리에 대면 썸네일 줄이 나옵니다.</p><p>트랙패드: 사진이 창에 맞춰진 동안 두 손가락 위아래 스크롤은 아무 일도 하지 않고, 좌우로 쓸면 한 번에 한 장씩 넘어갑니다. 확대한 동안에는 두 손가락으로 사진을 움직입니다. 목록 화면에서 오므리기·벌리기는 썸네일 크기를 바꿉니다.</p><p>위쪽 막대의 「감지된 입력」으로 트랙패드와 마우스를 제대로 구분하는지 확인해 주세요.</p>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+</div>
+
+<script>
+'use strict';
+
+// ------------------------------------------------------------ icons (same grid and stroke as icons.js)
+const PATHS = {
+  archive: '<rect x="3" y="4" width="14" height="4" rx="1"/><path d="M4.5 8v7.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V8"/><path d="M8.5 11h3"/>',
+  disk: '<ellipse cx="10" cy="5.5" rx="6.5" ry="2.5"/><path d="M3.5 5.5v9c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5v-9"/><path d="M3.5 10c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5"/>',
+  apps: '<rect x="3" y="3" width="5.5" height="5.5" rx="1.4"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1.4"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1.4"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.4"/>',
+  power: '<path d="M15.5 12.2A6.5 6.5 0 0 1 7.8 4.5a6.5 6.5 0 1 0 7.7 7.7z"/>',
+  folder: '<path d="M2.5 6V15a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1V7.5a1 1 0 0 0-1-1H10L8.5 4.5h-5a1 1 0 0 0-1 1z"/>',
+  image: '<rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="7.5" cy="8.5" r="1.5"/><path d="M3.5 14l4-4 3 3 2-2 4 4"/>',
+  check: '<path d="M4.5 10.5l3.5 3.5 7.5-8"/>',
+  chevronDown: '<path d="M5.5 8l4.5 4.5L14.5 8"/>',
+  chevron: '<path d="M7.5 5l5 5-5 5"/>',
+  lock: '<rect x="5" y="9" width="10" height="7.5" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/>',
+  expand: '<path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"/>',
+  open: '<path d="M11.5 3.5h5v5"/><path d="M16.5 3.5L9.5 10.5"/><path d="M15 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4"/>',
+  copy: '<rect x="7" y="7" width="9.5" height="9.5" rx="1.5"/><path d="M13 7V5a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 4 5v6a1.5 1.5 0 0 0 1.5 1.5H7"/>',
+  pick: '<circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/>',
+};
+function svg(name, size, width) {
+  const px = size || 18;
+  return `<svg viewBox="0 0 20 20" width="${px}" height="${px}" fill="none" stroke="currentColor" stroke-width="${width || 1.5}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PATHS[name] || ''}</svg>`;
+}
+function icon(name, size, width) {
+  const span = document.createElement('span');
+  span.className = 'icon';
+  span.innerHTML = svg(name, size, width);
+  return span;
+}
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
+const $ = (id) => document.getElementById(id);
+
+// ------------------------------------------------------------ fake folders and photos
+
+function rng(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SIZES = {
+  land: [4032, 3024], port: [3024, 4032], pano: [6000, 1800], wide: [3840, 2160], square: [2048, 2048],
+  shot: [2880, 1800], phone: [1170, 2532], small: [640, 480], icon: [256, 256], wall: [5120, 2880],
+};
+const FOLDERS = {};
+let seedCounter = 11;
+function folder(id, name, parent, specs) {
+  const images = specs.map(([kind, base], i) => {
+    const [w, h] = SIZES[kind];
+    const seed = seedCounter++ * 977;
+    const r = rng(seed);
+    const ext = kind === 'shot' || kind === 'phone' || kind === 'icon' ? 'png' : 'jpg';
+    return {
+      id: `${id}-${i}`, folder: id, kind, w, h, seed,
+      name: `${base || 'IMG_' + String(4100 + seedCounter * 7).padStart(4, '0')}.${ext}`,
+      bytes: Math.round(w * h * (ext === 'png' ? 0.9 : 0.28) * (0.8 + r() * 0.4)),
+      date: `2026-${String(4 + Math.floor(r() * 7)).padStart(2, '0')}-${String(1 + Math.floor(r() * 27)).padStart(2, '0')}`,
+    };
+  });
+  FOLDERS[id] = { id, name, parent, children: [], images };
+  if (parent) FOLDERS[parent].children.push(id);
+}
+folder('desk', '데스크탑', null, [['shot', '스크린샷 2026-10-31 오후 3.12.08'], ['square', '프로필']]);
+folder('photos', '사진', 'desk', [['land'], ['port'], ['land'], ['wide'], ['square']]);
+folder('trip', '여행 2026', 'photos', [
+  ['land'], ['land'], ['port'], ['pano', '파노라마 아라시야마'], ['land'], ['port'], ['land'], ['land'],
+  ['port'], ['land'], ['small', '오래된 사진'], ['land'], ['port'], ['land'], ['land'], ['wide'],
+]);
+folder('kyoto', '교토', 'trip', [['land'], ['port'], ['land'], ['land'], ['port'], ['land'], ['pano', '파노라마 기요미즈'], ['land']]);
+folder('shots', '스크린샷', 'photos', [
+  ['shot', '스크린샷 2026-10-28 오전 9.41.10'], ['shot', '스크린샷 2026-10-28 오후 1.02.55'], ['phone', '휴대폰 화면 1'],
+  ['shot', '스크린샷 2026-10-29 오후 4.20.31'], ['phone', '휴대폰 화면 2'], ['shot', '스크린샷 2026-10-30 오전 11.05.42'],
+]);
+folder('down', '다운로드', null, [
+  ['icon', 'app-icon'], ['small', 'banner-old'], ['wall', 'wallpaper-5k'], ['pano', 'panorama-city'], ['square', 'meme'], ['land'], ['shot', 'design-review'],
+]);
+
+const PLACES = ['desk', 'down'];
+const ALL = Object.values(FOLDERS).flatMap((f) => f.images);
+const byId = new Map(ALL.map((img) => [img.id, img]));
+
+function pathOf(folderId) {
+  const out = [];
+  for (let f = FOLDERS[folderId]; f; f = FOLDERS[f.parent]) out.unshift(f);
+  return out;
+}
+
+// ------------------------------------------------------------ drawing the fake photos
+
+function draw(ctx, img, W, H) {
+  const r = rng(img.seed);
+  const s = W / img.w;
+  const hue = Math.floor(r() * 360);
+  if (img.kind === 'shot' || img.kind === 'phone') return drawScreen(ctx, img, W, H, s, r, hue);
+  if (img.kind === 'icon') {
+    ctx.fillStyle = '#f2f4f6'; ctx.fillRect(0, 0, W, H);
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, `hsl(${hue},70%,55%)`); g.addColorStop(1, `hsl(${hue + 50},70%,40%)`);
+    ctx.fillStyle = g; roundRect(ctx, W * 0.1, H * 0.1, W * 0.8, H * 0.8, W * 0.18); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = W * 0.06;
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, W * 0.2, 0, Math.PI * 2); ctx.stroke();
+    return;
+  }
+  // Sky, sun and layered hills, so every photo is recognisable at thumbnail size.
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, `hsl(${hue},55%,${32 + r() * 20}%)`);
+  sky.addColorStop(0.65, `hsl(${(hue + 30) % 360},65%,${62 + r() * 15}%)`);
+  sky.addColorStop(1, `hsl(${(hue + 50) % 360},60%,80%)`);
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = `hsla(${(hue + 60) % 360},90%,88%,.95)`;
+  ctx.beginPath(); ctx.arc(W * (0.2 + r() * 0.6), H * (0.18 + r() * 0.2), Math.min(W, H) * (0.06 + r() * 0.05), 0, Math.PI * 2); ctx.fill();
+  for (let layer = 0; layer < 4; layer++) {
+    const base = H * (0.5 + layer * 0.12 + r() * 0.05);
+    ctx.fillStyle = `hsl(${(hue + 180 + layer * 12) % 360},${30 + layer * 8}%,${42 - layer * 8}%)`;
+    ctx.beginPath(); ctx.moveTo(0, H);
+    const steps = 9 + Math.floor(r() * 6);
+    for (let i = 0; i <= steps; i++) ctx.lineTo((W * i) / steps, base - r() * H * 0.16);
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+  }
+  // Fine detail that only reads at 100%, the way focus is checked on a real photo.
+  const bx = img.w * 0.62, by = img.h * 0.7, bw = Math.min(520, img.w * 0.3), bh = Math.min(180, img.h * 0.15);
+  ctx.save(); ctx.scale(s, s);
+  ctx.fillStyle = 'rgba(255,255,255,.88)'; ctx.fillRect(bx, by, bw, bh);
+  ctx.strokeStyle = '#1b1f23'; ctx.lineWidth = 1;
+  for (let x = 0; x < bw - 20; x += 4) { ctx.beginPath(); ctx.moveTo(bx + 10 + x + .5, by + 10); ctx.lineTo(bx + 10 + x + .5, by + bh * 0.45); ctx.stroke(); }
+  ctx.fillStyle = '#1b1f23'; ctx.font = '600 15px -apple-system, sans-serif';
+  ctx.fillText('100%에서 선명하게 보이는 세부', bx + 10, by + bh * 0.62);
+  ctx.font = '12px -apple-system, sans-serif'; ctx.fillStyle = '#4c5761';
+  ctx.fillText(`${img.w} × ${img.h} 픽셀 · 1픽셀 간격 줄무늬`, bx + 10, by + bh * 0.8);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.font = `600 ${Math.max(10, Math.round(Math.min(img.w, img.h) * 0.035 * s))}px -apple-system, sans-serif`;
+  ctx.fillText(img.name.replace(/\.\w+$/, ''), W * 0.035, H - W * 0.03);
+}
+
+function drawScreen(ctx, img, W, H, s, r, hue) {
+  ctx.save(); ctx.scale(s, s);
+  const w = img.w, h = img.h, phone = img.kind === 'phone';
+  ctx.fillStyle = '#eef1f4'; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, phone ? 140 : 64);
+  ctx.fillStyle = `hsl(${hue},55%,42%)`; ctx.fillRect(0, phone ? 140 : 64, phone ? w : 320, phone ? 10 : h);
+  if (!phone) { ctx.fillStyle = '#e3e7eb'; ctx.fillRect(0, 64, 320, h); ctx.fillStyle = `hsl(${hue},55%,42%)`; ctx.fillRect(0, 64, 6, 120); }
+  ctx.fillStyle = '#15191c'; ctx.font = `600 ${phone ? 46 : 26}px -apple-system, sans-serif`;
+  ctx.fillText(img.name.replace(/\.\w+$/, ''), phone ? 40 : 360, phone ? 100 : 44);
+  const left = phone ? 40 : 360, top = phone ? 200 : 110;
+  for (let i = 0; i < 18; i++) {
+    const y = top + i * (phone ? 120 : 80);
+    if (y > h - 60) break;
+    ctx.fillStyle = '#ffffff'; roundRect(ctx, left, y, (phone ? w - 80 : w - 420), phone ? 100 : 64, 10); ctx.fill();
+    ctx.fillStyle = '#c8d0d7'; ctx.fillRect(left + 20, y + 20, (phone ? w - 200 : 600) * (0.4 + r() * 0.6), 12);
+    ctx.fillStyle = '#7c8791'; ctx.font = `${phone ? 26 : 13}px -apple-system, sans-serif`;
+    ctx.fillText('작은 글자는 실제 크기에서 확인합니다 · Turink Toys 설정 항목 ' + (i + 1), left + 20, y + (phone ? 76 : 50));
+  }
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, rad) {
+  ctx.beginPath(); ctx.moveTo(x + rad, y); ctx.arcTo(x + w, y, x + w, y + h, rad); ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad); ctx.arcTo(x, y, x + w, y, rad); ctx.closePath();
+}
+
+const thumbs = new Map();
+function thumbURL(img) {
+  if (thumbs.has(img.id)) return thumbs.get(img.id);
+  const k = 320 / Math.max(img.w, img.h);
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(img.w * k)); c.height = Math.max(1, Math.round(img.h * k));
+  draw(c.getContext('2d'), img, c.width, c.height);
+  const url = c.toDataURL('image/jpeg', 0.82);
+  thumbs.set(img.id, url);
+  return url;
+}
+
+// Full-size photos are drawn on demand and the neighbours prefetched, standing in
+// for the decode-ahead that makes the next photo appear without a wait.
+const full = new Map();
+const pending = new Map();
+function fullURL(img) {
+  if (full.has(img.id)) return Promise.resolve(full.get(img.id));
+  if (pending.has(img.id)) return pending.get(img.id);
+  const job = new Promise((resolve) => setTimeout(resolve, 0)).then(async () => {
+    const c = new OffscreenCanvas(img.w, img.h);
+    draw(c.getContext('2d'), img, img.w, img.h);
+    const blob = await c.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
+    const url = URL.createObjectURL(blob);
+    full.set(img.id, url);
+    pending.delete(img.id);
+    if (full.size > 7) {
+      const oldest = full.keys().next().value;
+      if (oldest !== img.id) { URL.revokeObjectURL(full.get(oldest)); full.delete(oldest); }
+    }
+    return url;
+  });
+  pending.set(img.id, job);
+  return job;
+}
+
+// ------------------------------------------------------------ state
+
+let savedFixedSize = null;
+const state = {
+  folder: 'trip',
+  scope: 'folder',
+  selected: null,
+  picks: new Set(),
+  trashed: new Set(),
+  tile: 132,
+};
+try {
+  const saved = JSON.parse(localStorage.getItem('viewer-mock') || '{}');
+  if (saved.picks) saved.picks.forEach((id) => byId.has(id) && state.picks.add(id));
+  if (saved.wheel) $('opt-wheel').value = saved.wheel;
+  if (saved.size) $('opt-size').value = saved.size;
+  if (saved.fixedSize) savedFixedSize = saved.fixedSize;
+} catch {}
+function persist() {
+  try {
+    localStorage.setItem('viewer-mock', JSON.stringify({ picks: [...state.picks], wheel: $('opt-wheel').value, size: $('opt-size').value, fixedSize: viewer.fixedSize }));
+  } catch {}
+}
+
+function visibleImages() {
+  const list = state.scope === 'picks' ? ALL.filter((img) => state.picks.has(img.id)) : FOLDERS[state.folder].images;
+  return list.filter((img) => !state.trashed.has(img.id));
+}
+
+const fmtBytes = (n) => (n > 1e6 ? `${(n / 1e6).toFixed(1)}MB` : `${Math.round(n / 1e3)}KB`);
+
+// ------------------------------------------------------------ sidebar
+
+const NAV = [['archive', '압축'], ['disk', '디스크 정리'], ['apps', '앱 관리'], ['power', '전원'], ['folder', '폴더'], ['image', '이미지']];
+for (const [name, label] of NAV) {
+  const item = el('button', 'nav-item' + (name === 'image' ? ' current' : ''));
+  item.type = 'button';
+  item.append(icon(name), el('span', null, label));
+  if (name === 'image') item.append(el('span', 'nav-new', '새 화면'));
+  $('nav').appendChild(item);
+}
+
+// ------------------------------------------------------------ list screen
+
+// The grid holds subfolders first, then photos, and either can be the current entry.
+const isFolderKey = (key) => typeof key === 'string' && key.startsWith('folder:');
+function entries() {
+  const folders = state.scope === 'folder' ? FOLDERS[state.folder].children.map((id) => `folder:${id}`) : [];
+  return [...folders, ...visibleImages().map((img) => img.id)];
+}
+
+function renderToolbar() {
+  const place = $('place-button');
+  const crumbs = $('crumbs');
+  place.textContent = '';
+  crumbs.textContent = '';
+  place.hidden = state.scope === 'picks';
+  if (state.scope === 'picks') {
+    const back = el('button', 'back-button');
+    back.type = 'button';
+    back.title = '폴더로 돌아가기';
+    back.append(icon('chevron', 14), el('span', null, FOLDERS[state.folder].name));
+    back.addEventListener('click', () => setScope('folder'));
+    crumbs.append(back, el('span', 'view-title', `선택한 사진 모아보기 (${visibleImages().length}장)`));
+    return;
+  }
+  place.append(icon('folder', 16), icon('chevronDown', 14));
+  const parts = pathOf(state.folder);
+  parts.forEach((f, i) => {
+    if (i > 0) crumbs.append(icon('chevron', 12));
+    const b = el('button', 'crumb' + (i === parts.length - 1 ? ' last' : ''), f.name);
+    b.type = 'button';
+    if (i < parts.length - 1) b.addEventListener('click', () => openFolder(f.id, `folder:${parts[i + 1].id}`));
+    crumbs.append(b);
+  });
+}
+
+function renderGrid() {
+  const grid = $('grid');
+  grid.style.setProperty('--tile', `${state.tile}px`);
+  grid.textContent = '';
+  if (state.scope === 'folder') {
+    for (const id of FOLDERS[state.folder].children) {
+      const f = FOLDERS[id];
+      const key = `folder:${id}`;
+      const tile = el('div', 'tile' + (key === state.selected ? ' sel' : ''));
+      tile.dataset.key = key;
+      const t = el('div', 'thumb folder-thumb');
+      t.appendChild(icon('folder', 64, 1.2));
+      tile.append(t, el('div', 'tile-name', f.name), el('div', 'tile-sub', `사진 ${f.images.length}장`));
+      tile.addEventListener('mousedown', () => select(key));
+      tile.addEventListener('dblclick', () => openFolder(id));
+      grid.appendChild(tile);
+    }
+  }
+  const list = visibleImages();
+  for (const img of list) {
+    const tile = el('div', 'tile' + (img.id === state.selected ? ' sel' : ''));
+    tile.dataset.key = img.id;
+    const t = el('div', 'thumb');
+    const im = new Image();
+    im.src = thumbURL(img);
+    im.draggable = false;
+    t.appendChild(im);
+    tile.append(t, el('div', 'tile-name', img.name));
+    if (state.scope === 'picks') tile.append(el('div', 'tile-sub', FOLDERS[img.folder].name));
+    if (state.picks.has(img.id)) {
+      const dot = el('span', 'pick-dot');
+      dot.innerHTML = svg('check', 12, 2.2);
+      tile.appendChild(dot);
+    }
+    tile.addEventListener('mousedown', () => select(img.id));
+    tile.addEventListener('dblclick', () => openViewer(img.id));
+    grid.appendChild(tile);
+  }
+  if (grid.children.length === 0) {
+    grid.appendChild(el('div', 'empty', state.scope === 'picks' ? '아직 선택한 사진이 없습니다. 사진을 보다가 P를 누르면 여기에 모입니다.' : '이 폴더에는 사진이 없습니다.'));
+  }
+}
+
+function pickButton(img) {
+  const picked = state.picks.has(img.id);
+  const b = el('button', 'button' + (picked ? ' on' : ''));
+  b.type = 'button';
+  b.setAttribute('aria-pressed', String(picked));
+  b.title = picked ? '다시 누르면 선택을 해제합니다' : '';
+  b.append(icon(picked ? 'check' : 'pick', 15), el('span', null, picked ? '선택됨' : '이 사진 선택'), el('span', 'kbd', 'P'));
+  b.addEventListener('click', () => togglePick(img.id));
+  return b;
+}
+
+function renderPreview() {
+  const pane = $('preview');
+  pane.textContent = '';
+  const stage = el('div', 'preview-stage');
+  pane.appendChild(stage);
+  const info = el('div', 'preview-info');
+  const facts = el('dl', 'facts');
+  const row = (k, v) => facts.append(el('dt', null, k), el('dd', null, v));
+  const actions = el('div', 'actions');
+
+  if (isFolderKey(state.selected)) {
+    const f = FOLDERS[state.selected.slice(7)];
+    const big = icon('folder', 120, 1);
+    big.style.color = 'var(--accent)';
+    stage.appendChild(big);
+    stage.addEventListener('dblclick', () => openFolder(f.id));
+    info.appendChild(el('div', 'preview-name', f.name));
+    row('사진', `${f.images.length}장`);
+    row('하위 폴더', `${f.children.length}개`);
+    row('위치', pathOf(f.id).slice(0, -1).map((x) => x.name).join(' › '));
+    const open = el('button', 'button primary');
+    open.type = 'button';
+    open.append(icon('folder', 15), el('span', null, '폴더 열기'), el('span', 'kbd', '↵'));
+    open.addEventListener('click', () => openFolder(f.id));
+    actions.append(open);
+    info.append(facts, actions);
+    pane.appendChild(info);
+    return;
+  }
+
+  const img = byId.get(state.selected);
+  if (!img || state.trashed.has(img.id)) {
+    stage.appendChild(el('div', 'empty', '사진을 누르면 크게 보입니다.'));
+    return;
+  }
+  const im = new Image();
+  im.src = thumbURL(img);
+  im.draggable = false;
+  im.addEventListener('dblclick', () => openViewer(img.id));
+  stage.appendChild(im);
+  fullURL(img).then((url) => { if (state.selected === img.id) im.src = url; });
+
+  info.appendChild(el('div', 'preview-name', img.name));
+  row('크기', `${img.w} × ${img.h}`);
+  row('파일 크기', fmtBytes(img.bytes));
+  row('수정일', img.date);
+  row('위치', pathOf(img.folder).map((f) => f.name).join(' › '));
+  const openBtn = el('button', 'button primary');
+  openBtn.type = 'button';
+  openBtn.append(icon('open', 15), el('span', null, '뷰어로 열기'), el('span', 'kbd', '↵'));
+  openBtn.addEventListener('click', () => openViewer(img.id));
+  actions.append(pickButton(img), openBtn);
+  info.append(facts, actions);
+  pane.appendChild(info);
+}
+
+function renderPickBar() {
+  const bar = $('pick-bar');
+  const n = [...state.picks].filter((id) => !state.trashed.has(id)).length;
+  bar.hidden = n === 0;
+  bar.textContent = '';
+  if (bar.hidden) return;
+  const label = el('span');
+  label.append('선택한 사진 ', el('strong', null, `${n}장`));
+  // In the gathered view the header already leads back to the folder.
+  const show = el('button', 'text-button', '모아보기');
+  show.type = 'button';
+  show.hidden = state.scope === 'picks';
+  show.addEventListener('click', () => setScope('picks'));
+  const copy = el('button', 'button');
+  copy.type = 'button';
+  copy.append(icon('copy', 15), el('span', null, '폴더로 복사…'));
+  copy.addEventListener('click', () => openTransferSheet('copy'));
+  const move = el('button', 'button');
+  move.type = 'button';
+  move.append(icon('folder', 15), el('span', null, '폴더로 이동…'));
+  move.addEventListener('click', () => openTransferSheet('move'));
+  const clear = el('button', 'text-button', '선택 모두 해제');
+  clear.type = 'button';
+  clear.addEventListener('click', () => {
+    const before = new Set(state.picks);
+    state.picks.clear(); persist();
+    if (state.scope === 'picks') setScope('folder'); else renderAll();
+    toast(`선택 ${before.size}개를 해제했습니다.`, '되돌리기', () => { state.picks = before; persist(); renderAll(); });
+  });
+  bar.append(label, show, copy, move, clear);
+}
+
+function renderAll() {
+  renderToolbar();
+  renderGrid();
+  renderPreview();
+  renderPickBar();
+  if (viewer.open) renderViewerChrome();
+}
+
+function select(key) {
+  state.selected = key;
+  for (const t of $('grid').querySelectorAll('.tile')) t.classList.toggle('sel', t.dataset.key === key);
+  renderPreview();
+  const node = [...$('grid').querySelectorAll('.tile')].find((t) => t.dataset.key === key);
+  if (node) node.scrollIntoView({ block: 'nearest' });
+}
+
+// Going up selects the folder just left, as Finder does.
+function openFolder(id, focus) {
+  state.scope = 'folder';
+  state.folder = id;
+  const images = visibleImages();
+  state.selected = focus || (images[0] ? images[0].id : entries()[0] || null);
+  renderAll();
+  $('grid-wrap').scrollTop = 0;
+  $('grid-wrap').focus();
+}
+
+function setScope(scope) {
+  state.scope = scope;
+  const list = entries();
+  if (!list.includes(state.selected)) {
+    const images = visibleImages();
+    state.selected = images[0] ? images[0].id : list[0] || null;
+  }
+  renderAll();
+  $('grid-wrap').focus();
+}
+
+function togglePick(id) {
+  if (!id || isFolderKey(id)) return false;
+  const on = !state.picks.has(id);
+  if (on) state.picks.add(id); else state.picks.delete(id);
+  persist();
+  if (state.scope === 'picks' && !on && !viewer.open) {
+    const list = visibleImages();
+    state.selected = list[0] ? list[0].id : null;
+  }
+  renderAll();
+  return on;
+}
+
+function trash(id) {
+  if (!id || isFolderKey(id)) return;
+  const list = visibleImages();
+  const i = list.findIndex((img) => img.id === id);
+  state.trashed.add(id);
+  const rest = visibleImages();
+  const next = rest[Math.min(i, rest.length - 1)];
+  state.selected = next ? next.id : null;
+  renderAll();
+  toast(`${byId.get(id).name}을(를) 휴지통으로 옮겼습니다.`, '되돌리기', () => {
+    state.trashed.delete(id); state.selected = id; renderAll();
+    if (viewer.open) showImage(id, { keepZoom: false });
+  });
+  return next;
+}
+
+// The folder button lists the usual places; any folder opens from Finder or the picker.
+$('place-button').addEventListener('click', (event) => {
+  event.stopPropagation();
+  closeMenus();
+  const menu = el('div', 'menu');
+  menu.dataset.menu = '1';
+  menu.append(el('div', 'menu-head', '위치'));
+  for (const id of PLACES) {
+    const f = FOLDERS[id];
+    const b = el('button', 'menu-item');
+    b.type = 'button';
+    b.append(icon('folder', 15), el('span', null, f.name), el('span', 'sub', `${f.images.length}장`));
+    b.addEventListener('click', () => { closeMenus(); openFolder(f.id); });
+    menu.append(b);
+  }
+  menu.append(el('div', 'menu-sep'));
+  const other = el('button', 'menu-item', '다른 폴더 선택…');
+  other.type = 'button';
+  other.addEventListener('click', () => { closeMenus(); toast('실제 앱에서는 폴더 선택 창이 열립니다.'); });
+  menu.append(other);
+  const tip = el('div', 'menu-head', 'Finder에서 폴더를 우클릭해 바로 열 수도 있습니다.');
+  tip.style.cssText = 'max-width: 230px; padding-bottom: 4px;';
+  menu.append(el('div', 'menu-sep'), tip);
+  const box = $('place-button').getBoundingClientRect();
+  const host = $('app-win').getBoundingClientRect();
+  menu.style.left = `${box.left - host.left}px`;
+  menu.style.top = `${box.bottom - host.top + 6}px`;
+  $('app-win').appendChild(menu);
+});
+function closeMenus() { document.querySelectorAll('[data-menu]').forEach((m) => m.remove()); }
+document.addEventListener('mousedown', (e) => { if (!e.target.closest('[data-menu]') && !e.target.closest('#place-button')) closeMenus(); });
+
+// Copy and move share one sheet. Recent destinations come first, as most
+// picking sessions send photos to the same one or two folders.
+const RECENT = ['down', 'photos'];
+function openTransferSheet(kind) {
+  const ids = [...state.picks].filter((id) => !state.trashed.has(id));
+  const n = ids.length;
+  const copying = kind === 'copy';
+  const sheet = el('div', 'sheet');
+  const body = el('div', 'sheet-body');
+  body.append(el('h2', null, `선택한 사진 ${n}장을 ${copying ? '복사할' : '옮길'} 폴더`));
+  const dest = el('div', 'dest');
+  dest.append(el('div', 'menu-head', '최근에 보낸 폴더'));
+  RECENT.forEach((id, i) => {
+    const label = el('label');
+    const radio = el('input');
+    radio.type = 'radio'; radio.name = 'dest'; radio.value = id; radio.checked = i === 0;
+    label.append(radio, el('span', null, FOLDERS[id].name), el('span', 'where', pathOf(id).slice(0, -1).map((f) => f.name).join(' › ') || '홈'));
+    dest.append(label);
+  });
+  const other = el('label');
+  const r2 = el('input'); r2.type = 'radio'; r2.name = 'dest'; r2.value = '';
+  other.append(r2, el('span', null, '다른 폴더 선택…'));
+  dest.append(other);
+  const note = el('div', null, copying
+    ? '원본은 그대로 두고 복사본을 만듭니다. 같은 이름이 있으면 이름 뒤에 번호를 붙입니다.'
+    : '원본을 이 폴더로 옮깁니다. 옮긴 뒤에도 되돌리기로 원래 폴더에 돌려놓을 수 있습니다.');
+  note.style.cssText = 'color: var(--ink-3); font-size: 12px;';
+  body.append(dest, note);
+  const actions = el('div', 'sheet-actions');
+  const cancel = el('button', 'button', '취소'); cancel.type = 'button';
+  const ok = el('button', 'button primary', copying ? '복사' : '이동'); ok.type = 'button';
+  cancel.addEventListener('click', () => sheet.remove());
+  ok.addEventListener('click', () => {
+    const target = body.querySelector('input:checked').value;
+    sheet.remove();
+    if (!target) { toast('실제 앱에서는 폴더 선택 창이 열립니다.'); return; }
+    RECENT.splice(RECENT.indexOf(target), 1);
+    RECENT.unshift(target);
+    const name = FOLDERS[target].name;
+    if (copying) {
+      toast(`${n}장을 ‘${name}’ 폴더에 복사했습니다.`, '선택 해제', () => { state.picks.clear(); persist(); if (state.scope === 'picks') setScope('folder'); else renderAll(); });
+      return;
+    }
+    const moved = moveImages(ids, target);
+    moved.forEach((m) => state.picks.delete(m.id));
+    persist();
+    if (state.scope === 'picks' && state.picks.size === 0) setScope('folder'); else setScope(state.scope);
+    toast(`${moved.length}장을 ‘${name}’ 폴더로 옮겼습니다.`, '되돌리기', () => {
+      for (const m of moved.reverse()) {
+        const img = byId.get(m.id);
+        const list = FOLDERS[img.folder].images;
+        list.splice(list.indexOf(img), 1);
+        FOLDERS[m.from].images.splice(m.index, 0, img);
+        img.folder = m.from;
+        state.picks.add(m.id);
+      }
+      persist();
+      renderAll();
+    });
+  });
+  actions.append(cancel, ok);
+  body.append(actions);
+  sheet.append(body);
+  sheet.addEventListener('mousedown', (e) => { if (e.target === sheet) sheet.remove(); });
+  $('app-win').querySelector('.main').appendChild(sheet);
+  ok.focus();
+}
+
+function moveImages(ids, target) {
+  const moved = [];
+  for (const id of ids) {
+    const img = byId.get(id);
+    if (img.folder === target) continue;
+    const list = FOLDERS[img.folder].images;
+    const index = list.indexOf(img);
+    list.splice(index, 1);
+    moved.push({ id, from: img.folder, index });
+    img.folder = target;
+    FOLDERS[target].images.push(img);
+  }
+  return moved;
+}
+
+// Thumbnail size and the preview splitter.
+$('grid-wrap').addEventListener('wheel', (e) => {
+  if (!e.ctrlKey && !e.metaKey) return;
+  e.preventDefault();
+  state.tile = Math.round(Math.max(88, Math.min(220, state.tile * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.003)))));
+  $('size-range').value = state.tile;
+  $('grid').style.setProperty('--tile', `${state.tile}px`);
+}, { passive: false });
+$('size-range').addEventListener('input', (e) => { state.tile = Number(e.target.value); $('grid').style.setProperty('--tile', `${state.tile}px`); });
+(function () {
+  const split = $('splitter'), pane = $('preview');
+  split.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const startX = e.clientX, startW = pane.getBoundingClientRect().width;
+    const move = (m) => { pane.style.width = `${Math.max(260, startW - (m.clientX - startX))}px`; };
+    const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', move);
+    document.addEventListener('mouseup', up);
+  });
+})();
+
+function gridColumns() {
+  const tiles = [...$('grid').children];
+  if (tiles.length < 2) return 1;
+  const top = tiles[0].offsetTop;
+  const n = tiles.findIndex((t) => t.offsetTop !== top);
+  return n === -1 ? tiles.length : n;
+}
+
+function openEntry(key) {
+  if (!key) return;
+  if (isFolderKey(key)) openFolder(key.slice(7)); else openViewer(key);
+}
+
+function listKeys(e) {
+  const list = entries();
+  const i = list.indexOf(state.selected);
+  const cols = gridColumns();
+  const move = (delta) => {
+    const pos = Math.max(0, Math.min(list.length - 1, (i < 0 ? 0 : i) + delta));
+    if (list[pos]) select(list[pos]);
+  };
+  const k = e.key;
+  if (e.metaKey && k === 'ArrowUp') {
+    const parent = FOLDERS[state.folder].parent;
+    if (state.scope === 'folder' && parent) openFolder(parent, `folder:${state.folder}`);
+  } else if (e.metaKey && k === 'ArrowDown') openEntry(state.selected);
+  else if (e.metaKey && k === 'Backspace') trash(state.selected);
+  else if (k === 'ArrowRight') move(1);
+  else if (k === 'ArrowLeft') move(-1);
+  else if (k === 'ArrowDown') move(cols);
+  else if (k === 'ArrowUp') move(-cols);
+  else if (k === 'Enter') openEntry(state.selected);
+  else if (k === ' ') { if (state.selected && !isFolderKey(state.selected)) openViewer(state.selected); }
+  else if (k.toLowerCase() === 'p' && !e.metaKey) togglePick(state.selected);
+  else return;
+  e.preventDefault();
+}
+
+// ------------------------------------------------------------ viewer window
+
+const viewer = {
+  open: false, id: null, scale: 1, cx: 0, cy: 0, mode: 'fit', lock: false, full: false,
+  rect: null, fixedSize: savedFixedSize, saved: null, wheelAcc: 0, wheelLock: 0,
+};
+const V = { win: $('viewer'), port: $('viewport'), img: $('vimg') };
+
+function stageBox() { const r = $('stage').getBoundingClientRect(); return { w: r.width, h: r.height }; }
+function portBox() { return { w: V.port.clientWidth, h: V.port.clientHeight }; }
+
+// The window fits the photo inside 80% of the screen, never smaller than a usable minimum.
+function fittedSize(img) {
+  const st = stageBox();
+  const k = Math.min((st.w * 0.8) / img.w, (st.h * 0.8) / img.h, 1);
+  return { w: Math.max(420, Math.round(img.w * k)), h: Math.max(300, Math.round(img.h * k)) };
+}
+function placeWindow(rect, animate) {
+  const st = stageBox();
+  rect.w = Math.min(rect.w, st.w); rect.h = Math.min(rect.h, st.h);
+  rect.x = Math.max(0, Math.min(st.w - rect.w, rect.x));
+  rect.y = Math.max(0, Math.min(st.h - rect.h, rect.y));
+  viewer.rect = rect;
+  V.win.classList.toggle('anim', !!animate);
+  if (animate) {
+    // Children fade their own controls, so only the window's own transition counts.
+    const done = (e) => { if (e.target !== V.win) return; V.win.removeEventListener('transitionend', done); refit(); };
+    V.win.addEventListener('transitionend', done);
+  }
+  Object.assign(V.win.style, { left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px` });
+}
+// A fitted photo follows the window once it has settled at its new size.
+function refit() {
+  if (!viewer.open) return;
+  if (viewer.mode === 'fit' || viewer.mode === 'width') setMode(viewer.mode, true); else { clampPan(); render(); }
+}
+function centered(size) { const st = stageBox(); return { ...size, x: (st.w - size.w) / 2, y: (st.h - size.h) / 2 }; }
+
+function openViewer(id) {
+  const img = byId.get(id);
+  if (!img) return;
+  const mode = $('opt-size').value;
+  if (!viewer.open) {
+    viewer.open = true;
+    V.win.hidden = false;
+    viewer.full = false;
+    V.win.classList.remove('full');
+    const size = mode === 'fixed' ? (viewer.fixedSize || { w: 960, h: 640 }) : fittedSize(img);
+    placeWindow(centered(size), false);
+  }
+  state.selected = id;
+  showImage(id, { keepZoom: false, opening: true });
+  renderAll();
+}
+
+function closeViewer() {
+  if (!viewer.open) return;
+  if (viewer.full) toggleFull();
+  viewer.open = false;
+  V.win.hidden = true;
+  select(viewer.id);
+  $('grid-wrap').focus();
+}
+
+function currentList() { return visibleImages(); }
+
+function showImage(id, { keepZoom, opening } = {}) {
+  const img = byId.get(id);
+  if (!img) return;
+  const prev = byId.get(viewer.id);
+  viewer.id = id;
+  state.selected = id;
+  const mode = $('opt-size').value;
+  if (!opening && !viewer.full && mode === 'each') {
+    // Resizes around its own centre rather than jumping back to the middle of the screen.
+    const size = fittedSize(img);
+    const r = viewer.rect;
+    placeWindow({ w: size.w, h: size.h, x: r.x + (r.w - size.w) / 2, y: r.y + (r.h - size.h) / 2 }, true);
+  }
+  V.img.style.width = `${img.w}px`;
+  V.img.style.height = `${img.h}px`;
+  V.img.src = thumbURL(img);
+  fullURL(img).then((url) => { if (viewer.id === id) V.img.src = url; });
+  const apply = () => {
+    if (keepZoom && viewer.lock && prev && (viewer.mode === 'free' || viewer.mode === 'actual')) {
+      clampPan();
+      render();
+    } else {
+      setMode(keepZoom && viewer.lock && viewer.mode === 'width' ? 'width' : 'fit', true);
+    }
+  };
+  apply();
+  renderViewerChrome();
+  prefetch(id);
+}
+
+function prefetch(id) {
+  const list = currentList();
+  const i = list.findIndex((img) => img.id === id);
+  [i + 1, i - 1, i + 2].forEach((j) => { if (list[j]) fullURL(list[j]); });
+}
+
+function fitScale(img, port) { return Math.min(port.w / img.w, port.h / img.h, 1); }
+
+function setMode(mode, quiet) {
+  const img = byId.get(viewer.id);
+  const port = portBox();
+  viewer.mode = mode;
+  if (mode === 'fit') viewer.scale = fitScale(img, port);
+  else if (mode === 'width') viewer.scale = port.w / img.w;
+  else if (mode === 'actual') viewer.scale = 1;
+  viewer.cx = 0;
+  viewer.cy = mode === 'width' ? (img.h * viewer.scale - port.h) / 2 : 0;
+  clampPan();
+  render();
+  if (!quiet) hud(mode === 'fit' ? '창에 맞춤' : mode === 'width' ? '너비에 맞춤' : '실제 크기 100%');
+}
+
+function clampPan() {
+  const img = byId.get(viewer.id);
+  const port = portBox();
+  const dw = img.w * viewer.scale, dh = img.h * viewer.scale;
+  const mx = Math.max(0, (dw - port.w) / 2), my = Math.max(0, (dh - port.h) / 2);
+  viewer.cx = Math.max(-mx, Math.min(mx, viewer.cx));
+  viewer.cy = Math.max(-my, Math.min(my, viewer.cy));
+}
+
+function render() {
+  const img = byId.get(viewer.id);
+  const s = viewer.scale;
+  V.img.style.transform = `translate(${viewer.cx - (img.w * s) / 2}px, ${viewer.cy - (img.h * s) / 2}px) scale(${s})`;
+  V.img.style.imageRendering = s >= 3 ? 'pixelated' : 'auto';
+  const port = portBox();
+  const bigger = img.w * s > port.w + 1 || img.h * s > port.h + 1;
+  V.port.classList.toggle('grab', bigger);
+  updateZoomLabel();
+}
+
+function zoomAt(next, px, py, quiet) {
+  const img = byId.get(viewer.id);
+  const port = portBox();
+  const min = fitScale(img, port) * 0.5;
+  next = Math.max(min, Math.min(16, next));
+  // Keep the point under the cursor where it is.
+  const ox = px - port.w / 2, oy = py - port.h / 2;
+  viewer.cx = ox - ((ox - viewer.cx) * next) / viewer.scale;
+  viewer.cy = oy - ((oy - viewer.cy) * next) / viewer.scale;
+  viewer.scale = next;
+  viewer.mode = Math.abs(next - fitScale(img, port)) < 1e-4 ? 'fit' : Math.abs(next - 1) < 1e-4 ? 'actual' : 'free';
+  clampPan();
+  render();
+  if (!quiet) hud(`${Math.round(next * 100)}%`);
+}
+
+function step(delta) {
+  const list = currentList();
+  const i = list.findIndex((img) => img.id === viewer.id);
+  const j = i + delta;
+  if (j < 0) { hud('첫 사진입니다'); return; }
+  if (j >= list.length) { hud('마지막 사진입니다'); return; }
+  showImage(list[j].id, { keepZoom: true });
+  select(list[j].id);
+}
+function jump(index) {
+  const list = currentList();
+  if (list[index]) { showImage(list[index].id, { keepZoom: true }); select(list[index].id); }
+}
+
+function renderViewerChrome() {
+  const img = byId.get(viewer.id);
+  if (!img) return;
+  const list = currentList();
+  const i = list.findIndex((x) => x.id === viewer.id);
+  const title = $('edge-title');
+  title.textContent = '';
+  title.append(el('b', null, img.name), el('span', null, `${i + 1} / ${list.length}`), el('span', null, `${img.w} × ${img.h}`));
+  const lock = $('v-lock');
+  lock.innerHTML = svg('lock', 15);
+  lock.classList.toggle('on', viewer.lock);
+  const picked = state.picks.has(img.id);
+  const pick = $('v-pick');
+  pick.innerHTML = svg(picked ? 'check' : 'pick', 15) + `<span>${picked ? '선택됨' : '이 사진 선택'}</span>`;
+  pick.classList.toggle('on', picked);
+  $('v-full').innerHTML = svg('expand', 15);
+  const badge = $('vpick');
+  badge.innerHTML = picked ? `<span class="pick-dot">${svg('check', 15, 2.2)}</span>` : '';
+  updateZoomLabel();
+  const strip = $('edge-bottom');
+  strip.textContent = '';
+  list.forEach((x, k) => {
+    const item = el('div', 'strip-item' + (x.id === viewer.id ? ' cur' : ''));
+    const im = new Image(); im.src = thumbURL(x); im.draggable = false;
+    item.appendChild(im);
+    if (state.picks.has(x.id)) { const d = el('span', 'pick-dot'); d.innerHTML = svg('check', 9, 2.4); item.appendChild(d); }
+    item.addEventListener('click', () => jump(k));
+    strip.appendChild(item);
+  });
+  const cur = strip.querySelector('.cur');
+  if (cur) cur.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+function updateZoomLabel() {
+  const z = $('v-zoom');
+  const label = viewer.mode === 'fit' ? `맞춤 ${Math.round(viewer.scale * 100)}%` : viewer.mode === 'width' ? `너비 ${Math.round(viewer.scale * 100)}%` : `${Math.round(viewer.scale * 100)}%`;
+  z.textContent = label;
+}
+
+let hudTimer = 0;
+function hud(text) {
+  const node = $('hud');
+  node.textContent = text;
+  node.classList.add('show');
+  clearTimeout(hudTimer);
+  hudTimer = setTimeout(() => node.classList.remove('show'), 900);
+}
+
+function toggleFull() {
+  viewer.full = !viewer.full;
+  V.win.classList.toggle('full', viewer.full);
+  if (viewer.full) {
+    viewer.saved = { ...viewer.rect };
+    const st = stageBox();
+    placeWindow({ x: 0, y: 0, w: st.w, h: st.h }, false);
+    hud('전체화면 · 지금 화면을 그대로 덮습니다');
+  } else {
+    placeWindow(viewer.saved, false);
+  }
+  if (viewer.mode === 'fit' || viewer.mode === 'width') setMode(viewer.mode, true); else { clampPan(); render(); }
+}
+
+// Edges reveal the controls; the middle of the window never shows any.
+let edgeTimer = 0;
+V.win.addEventListener('mousemove', (e) => {
+  const r = V.win.getBoundingClientRect();
+  const y = e.clientY - r.top;
+  const top = y < 52, bottom = y > r.height - 96 && r.height > 260;
+  if (top || bottom) {
+    clearTimeout(edgeTimer);
+    $('edge-top').classList.toggle('show', top);
+    $('edge-bottom').classList.toggle('show', bottom);
+    $('vpick').style.opacity = top ? 0 : 1;
+  } else {
+    clearTimeout(edgeTimer);
+    edgeTimer = setTimeout(() => {
+      $('edge-top').classList.remove('show'); $('edge-bottom').classList.remove('show'); $('vpick').style.opacity = 1;
+    }, 250);
+  }
+});
+V.win.addEventListener('mouseleave', () => {
+  $('edge-top').classList.remove('show'); $('edge-bottom').classList.remove('show'); $('vpick').style.opacity = 1;
+});
+
+// Trackpad and mouse wheel arrive as the same wheel event, so the kind of
+// device is read from the stream: a trackpad sends small, fractional or
+// sideways deltas many times a second, a mouse wheel sends whole notches.
+// One decision lasts for a whole gesture so momentum cannot flip it midway.
+const input = { kind: 'mouse', lastAt: 0, gestureNavigated: false };
+function classify(e) {
+  const now = performance.now();
+  const fresh = now - input.lastAt > 180;
+  input.lastAt = now;
+  if (fresh) {
+    input.gestureNavigated = false;
+    if (!e.ctrlKey) {
+      const ax = Math.abs(e.deltaX), ay = Math.abs(e.deltaY);
+      const precise = e.deltaMode === 0 && (ax > 0 || e.deltaY % 1 !== 0 || ay < 12);
+      input.kind = precise ? 'trackpad' : 'mouse';
+      $('input-kind').textContent = input.kind === 'trackpad' ? '트랙패드' : '마우스 휠';
+    }
+  }
+  return input.kind;
+}
+
+V.port.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const kind = classify(e);
+  const img = byId.get(viewer.id);
+  const port = portBox();
+  const r = V.port.getBoundingClientRect();
+  const px = e.clientX - r.left, py = e.clientY - r.top;
+  const bigger = img.w * viewer.scale > port.w + 1 || img.h * viewer.scale > port.h + 1;
+
+  // Pinch arrives with ctrlKey and always zooms around the fingers.
+  if (e.ctrlKey) { zoomAt(viewer.scale * Math.exp(-e.deltaY * 0.012), px, py); return; }
+
+  if (kind === 'trackpad') {
+    if (e.metaKey) { zoomAt(viewer.scale * Math.exp(-e.deltaY * 0.004), px, py); return; }
+    // Zoomed in, two fingers move the photo in any direction.
+    if (bigger) { viewer.cx -= e.deltaX; viewer.cy -= e.deltaY; clampPan(); render(); return; }
+    // Fitted, a sideways swipe turns one page per gesture, like Photos; an
+    // up-and-down scroll does nothing so reading a photo never skips it.
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.2 && !input.gestureNavigated) {
+      viewer.wheelAcc += e.deltaX;
+      if (Math.abs(viewer.wheelAcc) >= 30) {
+        step(viewer.wheelAcc > 0 ? 1 : -1);
+        viewer.wheelAcc = 0;
+        input.gestureNavigated = true;
+      }
+    }
+    return;
+  }
+
+  const wheelMode = $('opt-wheel').value;
+  const zoomGesture = wheelMode === 'nav' ? e.metaKey : !e.metaKey;
+  if (zoomGesture) { zoomAt(viewer.scale * Math.exp(-e.deltaY * 0.0025), px, py); return; }
+  if (bigger && wheelMode === 'zoom') { viewer.cx -= e.deltaX; viewer.cy -= e.deltaY; clampPan(); render(); return; }
+  // A mouse wheel notch turns one page, zoomed or not, as in 꿀뷰.
+  const now = performance.now();
+  if (now < viewer.wheelLock) return;
+  viewer.wheelAcc += e.deltaY;
+  if (Math.abs(viewer.wheelAcc) >= 40) {
+    step(viewer.wheelAcc > 0 ? 1 : -1);
+    viewer.wheelAcc = 0;
+    viewer.wheelLock = now + 120;
+  }
+}, { passive: false });
+
+V.port.addEventListener('dblclick', (e) => {
+  const r = V.port.getBoundingClientRect();
+  if (viewer.mode !== 'fit') { setMode('fit'); return; }
+  zoomAt(1, e.clientX - r.left, e.clientY - r.top, true);
+  hud('실제 크기 100%');
+});
+
+V.port.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  const startX = e.clientX, startY = e.clientY, cx = viewer.cx, cy = viewer.cy;
+  V.port.classList.add('grabbing');
+  const move = (m) => { viewer.cx = cx + (m.clientX - startX); viewer.cy = cy + (m.clientY - startY); clampPan(); render(); };
+  const up = () => { V.port.classList.remove('grabbing'); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+});
+
+// Dragging the top edge moves the window; the corner resizes it.
+$('edge-top').addEventListener('mousedown', (e) => {
+  if (e.target.closest('button') || viewer.full) return;
+  e.preventDefault();
+  const startX = e.clientX, startY = e.clientY, r = { ...viewer.rect };
+  const move = (m) => placeWindow({ ...r, x: r.x + m.clientX - startX, y: r.y + m.clientY - startY }, false);
+  const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+});
+$('resize-grip').addEventListener('mousedown', (e) => {
+  if (viewer.full) return;
+  e.preventDefault(); e.stopPropagation();
+  const startX = e.clientX, startY = e.clientY, r = { ...viewer.rect };
+  const move = (m) => {
+    placeWindow({ ...r, w: Math.max(360, r.w + m.clientX - startX), h: Math.max(240, r.h + m.clientY - startY) }, false);
+    if (viewer.mode === 'fit' || viewer.mode === 'width') setMode(viewer.mode, true); else { clampPan(); render(); }
+  };
+  const up = () => {
+    viewer.fixedSize = { w: viewer.rect.w, h: viewer.rect.h };
+    persist();
+    document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up);
+  };
+  document.addEventListener('mousemove', move);
+  document.addEventListener('mouseup', up);
+});
+
+$('v-close').addEventListener('click', closeViewer);
+$('v-full').addEventListener('click', toggleFull);
+$('v-full-light').addEventListener('click', toggleFull);
+$('v-zoom').addEventListener('click', () => setMode(viewer.mode === 'fit' ? 'actual' : 'fit'));
+$('v-lock').addEventListener('click', toggleLock);
+$('v-pick').addEventListener('click', () => { const on = togglePick(viewer.id); hud(on ? '선택했습니다' : '선택을 해제했습니다'); });
+function toggleLock() {
+  viewer.lock = !viewer.lock;
+  renderViewerChrome();
+  hud(viewer.lock ? '넘겨도 확대 비율 유지' : '넘기면 창에 맞춤');
+}
+
+function viewerKeys(e) {
+  const k = e.key;
+  const port = portBox();
+  if (k === 'Escape') { if (viewer.full) toggleFull(); else closeViewer(); }
+  else if (k === ' ') closeViewer();
+  else if (k === 'ArrowRight' || k === 'PageDown') step(1);
+  else if (k === 'ArrowLeft' || k === 'PageUp') step(-1);
+  else if (k === 'Home') jump(0);
+  else if (k === 'End') jump(currentList().length - 1);
+  else if (k === '1') setMode('fit');
+  else if (k === '2') setMode('width');
+  else if (k === '0' && !e.metaKey) setMode('actual');
+  else if ((k === '=' || k === '+') ) zoomAt(viewer.scale * 1.25, port.w / 2, port.h / 2);
+  else if (k === '-') zoomAt(viewer.scale / 1.25, port.w / 2, port.h / 2);
+  else if (k.toLowerCase() === 'l' && !e.metaKey) toggleLock();
+  else if (k.toLowerCase() === 'p' && !e.metaKey) { const on = togglePick(viewer.id); hud(on ? '선택했습니다' : '선택을 해제했습니다'); }
+  else if (k.toLowerCase() === 'f' && !e.metaKey) toggleFull();
+  else if (e.metaKey && k === 'Backspace') {
+    const next = trash(viewer.id);
+    if (next) showImage(next.id, { keepZoom: true }); else closeViewer();
+  } else return;
+  e.preventDefault();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('select, input[type=range]')) return;
+  if (document.querySelector('.sheet')) { if (e.key === 'Escape') document.querySelector('.sheet').remove(); return; }
+  if (viewer.open) viewerKeys(e); else listKeys(e);
+});
+
+// ------------------------------------------------------------ mockup controls
+
+let toastTimer = 0;
+function toast(text, actionLabel, action) {
+  const node = $('toast');
+  node.textContent = '';
+  node.append(el('span', null, text));
+  if (actionLabel) {
+    const b = el('button', 'text-button', actionLabel);
+    b.type = 'button';
+    b.addEventListener('click', () => { node.hidden = true; action(); });
+    node.append(b);
+  }
+  node.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { node.hidden = true; }, 4200);
+}
+
+$('help-toggle').addEventListener('click', () => {
+  const help = $('help');
+  help.hidden = !help.hidden;
+  $('help-toggle').setAttribute('aria-pressed', String(!help.hidden));
+});
+$('opt-wheel').addEventListener('change', () => { persist(); hud($('opt-wheel').value === 'nav' ? '휠: 넘기기 · ⌘+휠: 확대' : '휠: 확대 · ⌘+휠: 넘기기'); });
+// Says exactly when the window follows the photo, since the option names alone are terse.
+const SIZE_HINTS = {
+  first: '뷰어 창을 열 때마다 그 사진 크기에 맞추고, 다음 사진으로 넘기는 동안에는 크기를 그대로 둡니다.',
+  each: '다음 사진으로 넘길 때마다 창을 그 사진 크기에 맞춥니다.',
+  fixed: '사진과 관계없이, 마지막으로 직접 조절한 창 크기로 엽니다.',
+};
+function renderSizeHint() { $('opt-size-hint').textContent = SIZE_HINTS[$('opt-size').value]; }
+renderSizeHint();
+$('opt-size').addEventListener('change', () => {
+  persist();
+  renderSizeHint();
+  if (viewer.open && !viewer.full) {
+    const img = byId.get(viewer.id);
+    const mode = $('opt-size').value;
+    const size = mode === 'fixed' ? (viewer.fixedSize || { w: 960, h: 640 }) : fittedSize(img);
+    viewer.mode = 'fit';
+    placeWindow(centered(size), true);
+  }
+});
+window.addEventListener('resize', () => {
+  if (!viewer.open) return;
+  if (viewer.full) { const st = stageBox(); placeWindow({ x: 0, y: 0, w: st.w, h: st.h }, false); }
+  else placeWindow({ ...viewer.rect }, false);
+  if (viewer.mode === 'fit' || viewer.mode === 'width') setMode(viewer.mode, true); else { clampPan(); render(); }
+});
+
+openFolder('trip');
+</script>
+</body>
+</html>
