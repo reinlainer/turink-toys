@@ -5,7 +5,7 @@ const { defineTask } = require('../../kernel/manifest');
 const { register } = require('../../kernel/registry');
 const { fail } = require('../../kernel/errors');
 const { assertUnderHome, assertAppBundle } = require('../../kernel/paths');
-const { moveToTrash } = require('../../kernel/trash');
+const { moveToTrash, inProtectedData, PROTECTED_REASON } = require('../../kernel/trash');
 const { formatBytes } = require('../../kernel/format');
 const { row } = require('../../kernel/present');
 const { listApps, findLeftovers, sizeOf } = require('./bundles');
@@ -168,10 +168,20 @@ register(
       const removedApps = [];
       const skippedApps = new Set();
       let freed = 0;
+      let refusedProtected = false;
 
       for (const [index, item] of plan.items.entries()) {
         run.progress(index + 1, plan.items.length, item.path, 'path');
         if (skippedApps.has(item.app)) continue;
+
+        // Once macOS has refused one app's data, the rest of the protected
+        // folders would only raise the same prompt and fail, so they are
+        // reported without being tried.
+        if (refusedProtected && inProtectedData(item.path)) {
+          failed.push({ path: item.path, reason: PROTECTED_REASON, protected: true });
+          run.warn('REMOVE_FAILED', { path: item.path, reason: PROTECTED_REASON });
+          continue;
+        }
 
         const outcome = await moveToTrash(item.path);
         if (outcome.ok) {
@@ -179,8 +189,9 @@ register(
           freed += item.bytes;
           if (item.kind === 'app') removedApps.push(item.app);
         } else {
-          failed.push({ path: item.path, reason: outcome.reason });
-          run.warn('REMOVE_FAILED', { path: item.path, reason: outcome.reason });
+          failed.push({ path: item.path, reason: outcome.reason, protected: outcome.protected === true });
+          run.warn('REMOVE_FAILED', { path: item.path, reason: outcome.reason, detail: outcome.detail });
+          if (outcome.protected) refusedProtected = true;
           if (item.kind === 'app') skippedApps.add(item.app);
         }
       }

@@ -186,6 +186,22 @@
         renderBar();
         load();
         loadRecent();
+        explainProtected(outcome.result);
+      }
+
+      // Folders macOS keeps from other apps are left behind rather than
+      // retried, and the person is told where they are and how to clear them.
+      async function explainProtected(result) {
+        const kept = ((result && result.failed) || []).filter((item) => item.protected).map((item) => item.path);
+        if (kept.length === 0) return;
+        const reveal = await ctx.sheet.open({
+          title: format(t().protectedTitle, { count: kept.length }),
+          message: t().protectedMessage,
+          detail: kept.join('\n'),
+          accept: t().protectedReveal,
+          wide: true,
+        });
+        if (reveal) window.turink.reveal(kept[0]);
       }
 
       // ------------------------------------------------ recent

@@ -13,6 +13,23 @@ const TRASH_TOOL = '/usr/bin/trash';
 const HOME = path.resolve(os.homedir());
 const HOME_TRASH = path.join(HOME, '.Trash');
 
+// macOS keeps each sandboxed app's data in a container that other apps may
+// only touch with the person's consent or Full Disk Access. A refusal there is
+// not something Finder can get past either: asking it only adds a password
+// prompt per item before failing the same way.
+const PROTECTED_ROOTS = [path.join(HOME, 'Library', 'Containers'), path.join(HOME, 'Library', 'Group Containers')];
+const PROTECTED_REASON =
+  'macOS protects this app data from other apps. Allow Turink Toys under System Settings > Privacy & Security > Full Disk Access, or move the folder to the Trash in Finder.';
+
+function inProtectedData(target) {
+  const resolved = path.resolve(target);
+  return PROTECTED_ROOTS.some((root) => resolved.startsWith(root + path.sep));
+}
+
+function refusedByMacOS(reason) {
+  return /Code=513|afpAccessDenied|Operation not permitted|-5000/.test(reason || '');
+}
+
 // Two routes into and out of the Trash, chosen by where an item lives.
 //
 // Items under the home directory move directly: /usr/bin/trash puts them in
@@ -111,6 +128,9 @@ async function moveToTrash(target) {
   const [first, second] = underHome(target) ? [directDelete, finderDelete] : [finderDelete, directDelete];
   const outcome = await first(target);
   if (outcome.ok || !fs.existsSync(target)) return outcome;
+  if (inProtectedData(target) && refusedByMacOS(outcome.reason)) {
+    return { ok: false, protected: true, reason: PROTECTED_REASON, detail: outcome.reason };
+  }
   const retry = await second(target);
   return retry.ok ? retry : { ok: false, reason: `${outcome.reason} / ${retry.reason}` };
 }
@@ -170,4 +190,4 @@ async function restoreItems(run, items) {
   return { restored, failed };
 }
 
-module.exports = { moveToTrash, restoreFromTrash, restoreItems };
+module.exports = { moveToTrash, restoreFromTrash, restoreItems, inProtectedData, refusedByMacOS, PROTECTED_REASON };

@@ -161,3 +161,18 @@ test('journal pruning is wired to something that calls it', () => {
   const source = require('fs').readFileSync(require.resolve('../src/kernel/run.js'), 'utf8');
   assert.ok(source.includes('pruneIfDue'), 'no run path triggers pruning');
 });
+
+test('app data refused by macOS is recognised and not handed to Finder', () => {
+  const os = require('os');
+  const path = require('path');
+  const trash = require('../src/kernel/trash');
+  const home = os.homedir();
+  assert.strictEqual(trash.inProtectedData(path.join(home, 'Library/Containers/imagetasks.Pixea')), true);
+  assert.strictEqual(trash.inProtectedData(path.join(home, 'Library/Group Containers/ABCDE.com.example')), true);
+  assert.strictEqual(trash.inProtectedData(path.join(home, 'Library/Containers')), false);
+  assert.strictEqual(trash.inProtectedData(path.join(home, 'Library/Caches/com.example')), false);
+  const refusal =
+    'Error Domain=NSCocoaErrorDomain Code=513 "“Pixea” couldn’t be moved to the trash because you don’t have permission to access it." {Error Domain=NSOSStatusErrorDomain Code=-5000 "afpAccessDenied"}';
+  assert.strictEqual(trash.refusedByMacOS(refusal), true);
+  assert.strictEqual(trash.refusedByMacOS('No such file or directory'), false);
+});
