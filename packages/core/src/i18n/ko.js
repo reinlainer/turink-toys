@@ -92,6 +92,7 @@ module.exports = {
       apps: '앱 관리',
       power: '전원',
       folders: '폴더',
+      images: '이미지',
       other: '기타',
     },
 
@@ -190,6 +191,9 @@ module.exports = {
       recent: '최근 삭제 내역',
       noRecent: '삭제한 앱이 이곳에 표시되며, 원래 위치로 되돌릴 수 있습니다.',
       putBack: '되돌리기',
+      protectedTitle: '앱 데이터 폴더 {count}개를 옮기지 못했습니다',
+      protectedMessage: 'macOS가 각 앱의 데이터를 다른 앱으로부터 보호하고 있어 이 폴더들을 옮길 수 없었습니다. Finder에서 직접 휴지통으로 옮기거나, 앱을 제거하기 전에 시스템 설정 > 개인정보 보호 및 보안 > 전체 디스크 접근 권한에서 Turink Toys를 허용하십시오.',
+      protectedReveal: 'Finder에서 보기',
       confirmTitle: '휴지통으로 이동하시겠습니까?',
       confirmMessage: '다음 항목이 휴지통으로 이동됩니다. 최근 삭제 내역에서 되돌릴 수 있습니다.',
       nameOnly: '이름만 일치',
@@ -268,6 +272,83 @@ module.exports = {
       placeHome: '홈',
     },
 
+    images: {
+      openFolder: '다른 폴더 열기',
+      thumbSize: '썸네일 크기',
+      viewSettings: '보기 설정',
+      places: '위치',
+      placePictures: '사진',
+      otherFolder: '다른 폴더 선택…',
+      finderTip: 'Finder에서 폴더를 우클릭하고 빠른 동작 > Turink-Toys Image Viewer를 선택해도 열 수 있습니다.',
+      photoCount: '사진 {count}장',
+      photos: '사진',
+      emptyFolder: '이 폴더에는 사진이 없습니다.',
+      emptyPicks: '아직 선택한 사진이 없습니다. 사진을 보다가 P를 누르면 여기에 모입니다.',
+      previewEmpty: '사진을 누르면 크게 보입니다.',
+      dimensions: '크기',
+      fileSize: '파일 크기',
+      modified: '수정일',
+      location: '위치',
+      select: '이 사진 선택',
+      selected: '선택됨',
+      selectedHint: '다시 누르면 선택을 해제합니다',
+      openViewer: '뷰어로 열기',
+      openFolderButton: '폴더 열기',
+      backToFolder: '폴더로 돌아가기',
+      picksTitle: '선택한 사진 모아보기 ({count}장)',
+      pickBar: '선택한 사진',
+      pickCount: '{count}장',
+      gather: '모아보기',
+      copy: '폴더로 복사…',
+      move: '폴더로 이동…',
+      clearSelection: '선택 모두 해제',
+      cleared: '선택 {count}개를 해제했습니다.',
+      copyTitle: '선택한 사진 {count}장을 복사할 폴더',
+      moveTitle: '선택한 사진 {count}장을 옮길 폴더',
+      recentTargets: '최근에 보낸 폴더',
+      copyNote: '원본은 그대로 두고 복사본을 만듭니다. 같은 이름이 있으면 이름 뒤에 번호를 붙입니다.',
+      moveNote: '원본을 이 폴더로 옮깁니다. 옮긴 뒤에도 되돌리기로 원래 폴더에 돌려놓을 수 있습니다.',
+      copyAction: '복사',
+      moveAction: '이동',
+      copied: '{count}장을 ‘{name}’ 폴더에 복사했습니다.',
+      moved: '{count}장을 ‘{name}’ 폴더로 옮겼습니다.',
+      trashed: '{name}을(를) 휴지통으로 옮겼습니다.',
+      wheel: '마우스 휠',
+      wheelNav: '다음 사진으로 넘기기 (⌘ + 휠은 확대)',
+      wheelZoom: '확대·축소 (⌘ + 휠은 넘기기)',
+      windowSize: '뷰어 창',
+      sizeFirst: '열 때만 사진에 맞춤',
+      sizeEach: '넘길 때마다 사진에 맞춤',
+      sizeRemember: '조절한 크기 기억',
+      sizeFirstHint: '뷰어 창을 열 때마다 그 사진 크기에 맞추고, 다음 사진으로 넘기는 동안에는 크기를 그대로 둡니다.',
+      sizeEachHint: '다음 사진으로 넘길 때마다 창을 그 사진 크기에 맞춥니다.',
+      sizeRememberHint: '사진과 관계없이, 마지막으로 직접 조절한 창 크기로 엽니다.',
+    },
+
+    viewer: {
+      close: '닫기 (Esc)',
+      fit: '맞춤 {percent}%',
+      width: '너비 {percent}%',
+      zoom: '{percent}%',
+      fitDone: '창에 맞춤',
+      widthDone: '너비에 맞춤',
+      actualDone: '실제 크기',
+      keepZoom: '넘겨도 확대 비율 유지 (L)',
+      keepZoomOn: '넘겨도 확대 비율을 유지합니다',
+      keepZoomOff: '넘기면 창에 맞춥니다',
+      select: '이 사진 선택',
+      selected: '선택됨',
+      selectedOn: '선택했습니다',
+      selectedOff: '선택을 해제했습니다',
+      fullScreen: '전체화면 (F)',
+      first: '첫 사진입니다',
+      last: '마지막 사진입니다',
+      position: '{index} / {count}',
+      trashed: '휴지통으로 옮겼습니다. ⌘Z로 되돌릴 수 있습니다.',
+      restored: '휴지통에서 되돌렸습니다',
+      failed: '이 사진을 표시할 수 없습니다.',
+    },
+
     other: {
       subtitle: '전용 화면이 아직 제공되지 않는 기능입니다.',
     },
@@ -305,6 +386,14 @@ module.exports = {
     files: '파일',
     folders: '폴더',
     folder: '폴더',
+    images: '사진',
+    selected: '선택한 사진',
+    missing: '찾을 수 없는 사진',
+    copied: '복사한 사진',
+    moved: '이동한 사진',
+    notCopied: '복사하지 못한 항목',
+    destination: '대상 폴더',
+    trashed: '휴지통으로 이동한 사진',
     alreadySaved: '이미 목록에 있음',
     position: '위치',
     name: '이름',
@@ -399,6 +488,14 @@ module.exports = {
     NOT_AN_ARCHIVE: {
       message: '읽을 수 있는 압축 파일이 아닙니다.',
       hint: '파일이 손상되지 않았는지 확인하십시오.',
+    },
+    NOT_A_FOLDER: {
+      message: '폴더가 아닙니다.',
+      hint: '사진이 들어 있는 폴더를 지정하십시오.',
+    },
+    NOT_AN_IMAGE: {
+      message: '이 도구에서 다루는 사진이 아닙니다.',
+      hint: 'jpg, png, heic, RAW 등 사진 파일만 지정할 수 있습니다.',
     },
     UNKNOWN_APP: {
       message: '해당하는 앱을 찾을 수 없거나, 여러 앱이 일치합니다.',
@@ -626,6 +723,78 @@ module.exports = {
       whenToUse: '삭제한 앱을 원래 위치로 되돌릴 때 사용합니다. 해당 삭제 작업의 실행 번호가 필요합니다.',
       input: {
         run: { label: '실행 번호', description: '되돌릴 앱 삭제 작업의 실행 번호입니다.' },
+      },
+    },
+
+    'images.list': {
+      title: '사진 보기',
+      summary: '폴더 안의 하위 폴더와 사진 목록',
+      whenToUse:
+        '사진을 선택하거나 복사, 이동, 휴지통으로 이동하기 전에 폴더에 어떤 사진이 있는지 확인할 때 사용합니다. 폴더 바로 아래의 폴더와 각 폴더의 사진 수, 폴더 바로 아래의 사진을 Finder와 같은 순서로 보고합니다. 숨겨진 파일, 앱과 라이브러리 패키지, 연결된 폴더는 표시하지 않습니다. 폴더를 읽기만 합니다.',
+      input: {
+        folder: { label: '폴더', description: '확인할 폴더입니다. 「~」는 홈 폴더를 뜻합니다. 지정하지 않으면 사진 폴더를 사용합니다.' },
+        hidden: { label: '숨김 항목 표시', description: '이름이 점(.)으로 시작하는 파일과 폴더도 표시합니다.' },
+      },
+    },
+
+    'images.selected': {
+      title: '선택한 사진',
+      summary: '뷰어에서 선택한 사진 목록',
+      whenToUse:
+        '사진을 복사, 이동, 휴지통으로 이동하기 전에 어떤 사진이 선택되어 있는지 확인할 때 사용합니다. 선택한 뒤에 이동하거나 삭제하여 없어진 사진은 찾을 수 없는 사진으로 보고합니다. 선택 목록은 읽기만 하며, 없어진 경로는 images.select로 선택 목록을 바꿀 때 함께 제외됩니다.',
+    },
+
+    'images.select': {
+      title: '사진 선택',
+      summary: '선택 목록에 사진을 추가하거나 제외하거나 모두 해제',
+      whenToUse:
+        'images.copy, images.move, images.trash가 처리할 사진을 고르고 뷰어에 선택 표시를 할 때 사용합니다. 저장된 선택 목록만 바뀌며 사진은 변경하지 않습니다. 이미 선택된 사진은 그대로 유지되고, 선택 목록이 바뀔 때 존재하지 않는 경로는 목록에서 제외됩니다.',
+      input: {
+        paths: { label: '사진', description: '선택 목록에 추가할 사진입니다. 제외하려면 선택 해제와 함께 지정합니다.' },
+        off: { label: '선택 해제', description: '사진을 추가하지 않고 선택 목록에서 제외합니다.' },
+        clear: { label: '모두 해제', description: '선택 목록을 모두 비웁니다. 사진을 지정하지 않아도 됩니다.' },
+      },
+    },
+
+    'images.copy': {
+      title: '사진 복사',
+      summary: '사진을 다른 폴더로 복사',
+      whenToUse:
+        '사진의 사본을 폴더에 만들 때 사용합니다. 예를 들어 images.select로 고른 사진을 복사할 수 있습니다. 폴더에 같은 이름이 있으면 덮어쓰지 않고 「이름 2.jpg」, 「이름 3.jpg」와 같이 번호를 붙입니다. 복사하지 못한 사진은 실패 목록에 보고하며 나머지는 계속 복사합니다.',
+      input: {
+        paths: { label: '사진', description: '복사할 사진의 경로입니다.' },
+        to: { label: '대상 폴더', description: '복사할 위치의 폴더입니다. 이미 있는 폴더여야 하며, 「~」는 홈 폴더를 뜻합니다.' },
+      },
+    },
+
+    'images.move': {
+      title: '사진 이동',
+      summary: '사진을 다른 폴더로 이동',
+      whenToUse:
+        '사진을 폴더에 정리할 때 사용합니다. 폴더에 같은 이름이 있으면 덮어쓰지 않고 「이름 2.jpg」, 「이름 3.jpg」와 같이 번호를 붙입니다. 선택한 사진을 이동하면 새 경로로 선택이 유지됩니다. 이동하지 못한 사진은 실패 목록에 보고하며 나머지는 계속 이동합니다.',
+      input: {
+        paths: { label: '사진', description: '이동할 사진의 경로입니다.' },
+        to: { label: '대상 폴더', description: '이동할 위치의 폴더입니다. 이미 있는 폴더여야 하며, 「~」는 홈 폴더를 뜻합니다.' },
+      },
+    },
+
+    'images.trash': {
+      title: '사진을 휴지통으로 이동',
+      summary: '사진을 휴지통으로 이동',
+      whenToUse:
+        '사진을 삭제할 때 사용합니다. 이동하기 전에 사진 목록과 크기가 표시되며, 휴지통으로 이동되므로 images.restore로 되돌릴 수 있습니다. 사진 파일만 지정할 수 있어 잘못된 경로로 다른 파일이 삭제되지 않습니다.',
+      input: {
+        paths: { label: '사진', description: '휴지통으로 이동할 사진의 경로입니다.' },
+      },
+    },
+
+    'images.restore': {
+      title: '삭제한 사진 되돌리기',
+      summary: '사진 삭제 시 휴지통으로 이동한 사진을 원래 위치로 되돌리기',
+      whenToUse:
+        '휴지통으로 이동한 사진을 원래 위치로 되돌릴 때 사용합니다. 해당 삭제 작업의 실행 번호가 필요합니다. 원래 이름을 이미 다른 파일이 사용하고 있으면 덮어쓰지 않고 그 사실을 보고합니다.',
+      input: {
+        run: { label: '실행 번호', description: '되돌릴 사진 삭제 작업의 실행 번호입니다.' },
       },
     },
 

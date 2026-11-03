@@ -47,10 +47,26 @@ const ACTIONS = [
     successLabel: 'Check complete',
     legacyNames: ['Check Windows Compatibility'],
   },
+  {
+    // Not a task: it hands the selection to the app, which opens a folder on
+    // the Images screen and a photo in the viewer window.
+    identifier: 'toys.turink.quickaction.viewer',
+    sendTypes: ['public.folder', 'public.image'],
+    title: 'Image Viewer',
+    opensApp: true,
+  },
 ];
 
+// Every entry starts with the product name, so the actions sit together in the
+// Quick Actions menu among those other apps install.
+const PREFIX = 'Turink-Toys';
+
+function baseTitle(action) {
+  return action.title || registry.get(action.task).title;
+}
+
 function canonicalName(action) {
-  return registry.get(action.task).title;
+  return `${PREFIX} ${baseTitle(action)}`;
 }
 
 // Every name an action may already be installed under. Releases before the
@@ -58,9 +74,15 @@ function canonicalName(action) {
 // named the bundle in whichever language it detected, so both have to be swept
 // or Finder shows the leftovers next to the current entry.
 function bundlePaths(action) {
+  const localized = action.task
+    ? i18n.available().map((locale) => i18n.localizeTask(registry.get(action.task), locale).title)
+    : [];
   const names = new Set([
     canonicalName(action),
-    ...i18n.available().map((locale) => i18n.localizeTask(registry.get(action.task), locale).title),
+    // Releases before the prefix named each entry by its title alone.
+    baseTitle(action),
+    ...localized,
+    ...localized.map((title) => `${PREFIX} ${title}`),
     ...(action.legacyNames || []),
   ]);
   return [...names].map((name) => path.join(SERVICES_DIR, `${name}.workflow`));
@@ -83,7 +105,30 @@ function resolveCommand() {
   }
 }
 
+// The app is found by its bundle identifier, so the action keeps working
+// wherever the bundle was installed. A release build is preferred to a
+// development one when both are present.
+function resolveAppId() {
+  const override = process.env.TURINK_TOYS_APP_ID;
+  if (override) return override;
+  for (const id of ['toys.turink.app', 'toys.turink.app.dev']) {
+    try {
+      const found = execFileSync('/usr/bin/mdfind', [`kMDItemCFBundleIdentifier == '${id}'`], { encoding: 'utf8' }).trim();
+      if (found) return id;
+    } catch {
+      // Spotlight may be off; fall through to the release identifier.
+    }
+  }
+  return 'toys.turink.app';
+}
+
 function shellScript(command, action) {
+  if (action.opensApp) {
+    return `#!/bin/sh
+/usr/bin/open -b ${JSON.stringify(resolveAppId())} "$@"
+exit 0
+`;
+  }
   const args = [action.task, '"$@"', ...(action.extraArgs || []), '--json'].join(' ');
   // The result is invisible in Finder, so both outcomes are announced. The
   // failure notice carries the error code, which is what makes the run

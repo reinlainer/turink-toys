@@ -35,6 +35,12 @@
     external: '<path d="M11.5 3.5h5v5"/><path d="M16.5 3.5L9.5 10.5"/><path d="M15 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4"/>',
     plus: '<path d="M10 4.5v11M4.5 10h11"/>',
     'arrow-up-right': '<path d="M6.5 13.5l7-7M8 6.5h5.5V12"/>',
+    image: '<rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="7.5" cy="8.5" r="1.5"/><path d="M3.5 14l4-4 3 3 2-2 4 4"/>',
+    pick: '<circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/>',
+    'chevron-down': '<path d="M5.5 8l4.5 4.5L14.5 8"/>',
+    sliders: '<path d="M4 6h7M14.5 6H16M4 14h1.5M9 14h7"/><circle cx="12.75" cy="6" r="1.75"/><circle cx="7.25" cy="14" r="1.75"/>',
+    lock: '<rect x="5" y="9" width="10" height="7.5" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/>',
+    expand: '<path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"/>',
     display: '<rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M7.5 17h5M10 13.5V17"/>',
   };
 

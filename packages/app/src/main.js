@@ -9,6 +9,8 @@ const appMenu = require('./menu');
 const updates = require('./updates');
 const UI_STRINGS = require('./strings');
 const trayMenu = require('./tray-menu');
+const images = require('./images');
+const { createViewer } = require('./viewer-window');
 
 const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
 
@@ -31,6 +33,9 @@ const DISPLAY_NAME = 'Turink Toys';
 // Setting the name here is what puts the product in the About panel instead of
 // "Electron"; the menu bar title comes from the bundle and needs a real build.
 app.setName(DISPLAY_NAME);
+
+// Schemes have to be declared before the app is ready.
+images.registerSchemes();
 
 let locale = 'en';
 
@@ -642,6 +647,97 @@ ipcMain.handle('settings:lastTask', (event, taskId) => {
 ipcMain.handle('runs:read', (event, runId) => journal.read(runId));
 ipcMain.handle('shell:reveal', (event, target) => shell.showItemInFolder(target));
 
+// ---------------------------------------------------------------- images
+
+// A folder opens on the Images screen of the main window and a photo opens in
+// the viewer, whether it arrives from Finder, the quick action or the screen.
+
+const viewer = createViewer({
+  preload: path.join(__dirname, 'preload.js'),
+  page: path.join(__dirname, 'renderer', 'viewer.html'),
+  settings,
+  onClosed: (file) => send('viewer:closed', file),
+});
+
+let imagesFolder = null;
+let appReady = false;
+const openQueue = [];
+
+async function folderImages(folder) {
+  try {
+    const outcome = await execute.runTask('images.list', { folder }, { source: 'app', ephemeral: true });
+    return outcome.result.images.map((image) => image.path);
+  } catch {
+    return [];
+  }
+}
+
+async function routeOpen(target) {
+  let stat;
+  try {
+    stat = fs.statSync(target);
+  } catch {
+    return;
+  }
+  if (stat.isDirectory()) {
+    imagesFolder = target;
+    if (mainWindow && !mainWindow.webContents.isLoading()) send('images:show', target);
+    showScreen('images');
+    return;
+  }
+  if (!core.images.isImage(target)) return;
+  const list = await folderImages(path.dirname(target));
+  viewer.open(target, list.includes(target) ? list : [target]);
+}
+
+// macOS delivers files opened from Finder through this event, possibly before
+// the app is ready, so they wait until the windows can be made.
+app.on('open-file', (event, target) => {
+  event.preventDefault();
+  if (appReady) routeOpen(target);
+  else openQueue.push(target);
+});
+
+ipcMain.handle('images:initial', () => {
+  const home = app.getPath('home');
+  const folder = imagesFolder || settings.get('images.lastFolder', null) || path.join(home, 'Pictures');
+  imagesFolder = null;
+  return { folder, home };
+});
+ipcMain.handle('images:remember', (event, folder) => settings.set('images.lastFolder', folder));
+ipcMain.handle('images:view', () => ({ wheel: 'nav', windowSize: 'first', ...settings.get('images.view', {}) }));
+ipcMain.handle('images:setView', (event, view) => {
+  const next = { wheel: 'nav', windowSize: 'first', ...settings.get('images.view', {}), ...view };
+  settings.set('images.view', next);
+  for (const win of BrowserWindow.getAllWindows()) win.webContents.send('images:view', next);
+  return next;
+});
+
+ipcMain.handle('viewer:open', (event, { file, list }) => viewer.open(file, list && list.length ? list : [file]));
+ipcMain.handle('viewer:shown', (event, { file, width, height }) => viewer.shown(file, { width, height }));
+ipcMain.handle('viewer:chrome', (event, visible) => viewer.showButtons(visible));
+ipcMain.handle('viewer:fullscreen', () => viewer.toggleFullScreen());
+ipcMain.handle('viewer:close', () => viewer.close());
+
+// The folder on screen is watched so a screenshot saved into it appears
+// without a manual refresh. Changes arrive in bursts, so they are gathered.
+let folderWatch = null;
+let folderTimer = null;
+ipcMain.handle('images:watch', (event, folder) => {
+  if (folderWatch) folderWatch.close();
+  folderWatch = null;
+  if (!folder) return;
+  try {
+    folderWatch = fs.watch(folder, () => {
+      clearTimeout(folderTimer);
+      folderTimer = setTimeout(() => send('images:changed', folder), 300);
+    });
+    folderWatch.on('error', () => {});
+  } catch {
+    // A folder that cannot be watched is still shown; it just will not refresh.
+  }
+});
+
 // ---------------------------------------------------------------- lifecycle
 
 app.whenReady().then(() => {
@@ -655,7 +751,12 @@ app.whenReady().then(() => {
   // selector in the window behave like a setting rather than a session toggle.
   locale = i18n.detect({ saved: settings.get('locale'), system: app.getLocale() });
   buildMenu();
-  createWindow();
+  images.handleProtocols();
+  appReady = true;
+  // Opening a photo from Finder starts with the viewer alone; the main window
+  // appears only when nothing was asked of the app.
+  if (openQueue.length > 0) openQueue.splice(0).forEach(routeOpen);
+  else createWindow();
   createTray();
   watchFolderSources();
 

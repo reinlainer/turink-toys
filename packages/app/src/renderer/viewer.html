@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: turink-image: turink-thumb:;">
+<title>Turink Toys</title>
+<style>
+  /* The viewer is dark whatever the system theme, so the photo is the only
+     bright thing in the window. The edge bars are plain translucent rather
+     than blurred, since blurring a large photo on every frame stutters. */
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: #0f1113; color: #e9edf1; overflow: hidden; user-select: none;
+    font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; }
+  .icon { display: inline-flex; }
+  .icon svg { display: block; }
+
+  .viewport { position: absolute; inset: 0; overflow: hidden; }
+  .viewport.grab { cursor: grab; }
+  .viewport.grabbing { cursor: grabbing; }
+  .photo { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; will-change: transform; pointer-events: none; }
+
+  .edge-top {
+    position: absolute; left: 0; right: 0; top: 0; height: 44px; display: flex; align-items: center; gap: 12px;
+    padding: 0 12px 0 84px; background: linear-gradient(rgba(10, 12, 14, 0.9), rgba(10, 12, 14, 0.78));
+    opacity: 0; transform: translateY(-6px); transition: opacity 0.14s, transform 0.14s;
+    pointer-events: none;
+  }
+  .edge-top.show { opacity: 1; transform: none; pointer-events: auto; -webkit-app-region: drag; }
+  .edge-top button { -webkit-app-region: no-drag; }
+  .title { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 10px; white-space: nowrap; overflow: hidden; }
+  .title b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+  .title span { color: #9aa5b0; font-size: 12px; }
+  .tool { border: 0; background: none; color: #c9d1d9; padding: 4px 7px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
+  .tool:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+  .tool.on { color: #7fd3d8; }
+
+  .edge-bottom {
+    position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto;
+    background: linear-gradient(rgba(10, 12, 14, 0.7), rgba(10, 12, 14, 0.92));
+    opacity: 0; transform: translateY(8px); transition: opacity 0.14s, transform 0.14s; pointer-events: none; scrollbar-width: none;
+  }
+  .edge-bottom.show { opacity: 1; transform: none; pointer-events: auto; }
+  .strip-item { position: relative; flex: none; width: 64px; height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 5px; cursor: pointer; opacity: 0.6; }
+  .strip-item:hover, .strip-item.current { opacity: 1; }
+  .strip-item.current { box-shadow: 0 0 0 2px #3fb3ba; }
+  .strip-item img { max-width: 100%; max-height: 100%; border-radius: 2px; }
+
+  .pick-dot { display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #3fb3ba; color: #0b2224; }
+  .strip-item .pick-dot { position: absolute; top: -4px; right: -4px; width: 14px; height: 14px; box-shadow: 0 0 0 1.5px #111; }
+  .badge { position: absolute; top: 12px; right: 12px; pointer-events: none; transition: opacity 0.14s; }
+  .badge .pick-dot { width: 26px; height: 26px; box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.5); }
+
+  .hud {
+    position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); padding: 6px 12px; border-radius: 999px;
+    background: rgba(20, 23, 27, 0.88); color: #f1f4f6; font-size: 12.5px; white-space: nowrap; pointer-events: none;
+    opacity: 0; transition: opacity 0.18s;
+  }
+  .hud.show { opacity: 1; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="viewport" id="viewport"><img class="photo" id="photo" alt="" draggable="false"></div>
+  <div class="badge" id="badge"></div>
+  <div class="edge-top" id="edge-top">
+    <div class="title" id="title"></div>
+    <button class="tool" id="zoom" type="button"></button>
+    <button class="tool" id="lock" type="button"></button>
+    <button class="tool" id="pick" type="button"></button>
+    <button class="tool" id="full" type="button"></button>
+  </div>
+  <div class="edge-bottom" id="strip"></div>
+  <div class="hud" id="hud"></div>
+
+  <script src="dom.js"></script>
+  <script src="icons.js"></script>
+  <script src="viewer-math.js"></script>
+  <script src="wheel-input.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

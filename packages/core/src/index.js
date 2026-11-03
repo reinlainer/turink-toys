@@ -23,6 +23,13 @@ require('./tasks/folders/reorder');
 require('./tasks/folders/rename');
 require('./tasks/folders/open');
 require('./tasks/folders/group-tasks');
+require('./tasks/images/list');
+require('./tasks/images/selected');
+require('./tasks/images/select');
+require('./tasks/images/copy');
+require('./tasks/images/move');
+require('./tasks/images/trash');
+require('./tasks/images/restore');
 
 module.exports = {
   registry: require('./kernel/registry'),
@@ -35,4 +42,6 @@ module.exports = {
   present: require('./kernel/present'),
   format: require('./kernel/format'),
   paths: require('./kernel/paths'),
+  // The viewer decides what to draw from the same table the tasks use.
+  images: require('./tasks/images/formats'),
 };

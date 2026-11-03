@@ -46,20 +46,31 @@ function version() {
   return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
 }
 
-function plist(fields) {
-  const body = Object.entries(fields)
-    .map(([key, value]) =>
-      typeof value === 'boolean'
-        ? `  <key>${key}</key>\n  <${value}/>`
-        : `  <key>${key}</key>\n  <string>${value}</string>`
-    )
-    .join('\n');
+// Values are strings, booleans, lists or nested dictionaries; nothing else
+// appears in the bundle's Info.plist.
+function plistValue(value, indent) {
+  const pad = '  '.repeat(indent);
+  if (typeof value === 'boolean') return `${pad}<${value}/>`;
+  if (Array.isArray(value)) {
+    return `${pad}<array>\n${value.map((item) => plistValue(item, indent + 1)).join('\n')}\n${pad}</array>`;
+  }
+  if (value && typeof value === 'object') return `${pad}<dict>\n${plistEntries(value, indent + 1)}\n${pad}</dict>`;
+  return `${pad}<string>${value}</string>`;
+}
 
+function plistEntries(fields, indent) {
+  const pad = '  '.repeat(indent);
+  return Object.entries(fields)
+    .map(([key, value]) => `${pad}<key>${key}</key>\n${plistValue(value, indent)}`)
+    .join('\n');
+}
+
+function plist(fields) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-${body}
+${plistEntries(fields, 1)}
 </dict>
 </plist>
 `;
@@ -148,6 +159,17 @@ function main() {
       // The window and the menu bar item are the interface. A Dock tile is
       // still wanted, so the app is not declared an agent.
       LSApplicationCategoryType: 'public.app-category.utilities',
+      // Photos open in the viewer from Finder's Open With menu. The rank is
+      // Alternate so installing never takes over as the default image app;
+      // the person makes it the default themselves.
+      CFBundleDocumentTypes: [
+        {
+          CFBundleTypeName: 'Image',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          LSItemContentTypes: ['public.image'],
+        },
+      ],
     })
   );
 

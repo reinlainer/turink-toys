@@ -51,6 +51,13 @@ application in place.
 | `apps.list` | List installed applications that can be removed |
 | `apps.uninstall` | Move an application and the files it left in the Library to the Trash |
 | `apps.restore` | Return applications a previous removal moved to the Trash |
+| `images.list` | List the subfolders and photos in a folder |
+| `images.selected` | List the photos picked in the viewer |
+| `images.select` | Add photos to the selection, take them off it, or clear it |
+| `images.copy` | Copy photos into another folder |
+| `images.move` | Move photos into another folder |
+| `images.trash` | Move photos to the Trash |
+| `images.restore` | Return photos that a previous images.trash moved to the Trash |
 
 ### The archive problem
 
@@ -224,6 +231,7 @@ The window has one screen per area rather than one per task:
 | Disk Cleanup | `disk.targets` and `disk.report` as one sized list, `disk.clean` on the selection, and `disk.restore` from the list of recent cleanups |
 | Applications | `apps.list` with icons and search, `apps.uninstall` on the selection, and `apps.restore` from the list of recent removals |
 | Power | `power.status` as a summary, with `power.keep-awake` and `power.lid` as two settings. The lid setting runs under the macOS administrator prompt |
+| Images | `images.list` as subfolders and thumbnails beside a large preview, `images.select` and `images.selected` for the photos gathered across folders, `images.copy` and `images.move` to send them on, `images.trash` and `images.restore` behind ⌘⌫ and Undo |
 
 The tasks themselves stay separate, because that is the contract the command
 line and agents call. A task no screen covers yet appears under More with a form
@@ -234,6 +242,21 @@ work as a terminal command, to paste into a script or hand to an agent.
 A menu bar item opens the Applications and Power screens, saved folders, and the
 window where it was left. The items named after a screen follow the window's
 language.
+
+Double-clicking a photo opens the viewer, a window of its own that is reused for
+every photo. It shows the photo alone; the file name, zoom and buttons appear at
+the top edge and the folder's thumbnails at the bottom edge when the pointer
+goes there. Arrow keys, a mouse wheel notch or a sideways trackpad swipe turn
+one page; a pinch, ⌘ + wheel or a double-click zooms around the pointer; P
+selects the photo and ⌘⌫ moves it to the Trash. Full screen covers the current
+screen in place rather than moving to a desktop of its own. JPEG, PNG, GIF,
+WebP, AVIF and BMP are drawn directly; HEIC, TIFF and camera RAW files are
+converted with the macOS `sips` tool and thumbnails come from Quick Look, both
+cached under `~/Library/Caches/Turink Toys/images`.
+
+The bundle declares itself a viewer for images, so it appears under Open With
+in Finder and can be made the default image app there. It never takes that
+place on its own.
 
 The Activity panel, closed by default, shows runs as they happen, including
 ones this window did not start. A task invoked from the terminal or from a
@@ -314,13 +337,18 @@ node integrations/quick-actions/install.js
 ```
 
 Installs quick actions for `archive.compress`, `archive.extract` and
-`archive.verify` into `~/Library/Services`. They appear under Quick Actions in
-the Finder context menu and accept a multiple selection. Results arrive through
-Notification Center, since a quick action has nowhere else to report.
+`archive.verify` into `~/Library/Services`, plus Image Viewer, which opens a
+folder on the Images screen or a photo in the viewer. They appear under Quick
+Actions in the Finder context menu and accept a multiple selection. Results
+arrive through Notification Center, since a quick action has nowhere else to
+report.
 
-A menu entry carries the title its task manifest declares, and stays English in
-every language. A quick action names the command it runs, so the menu, the
-reference and the command line all answer to one name.
+Every entry starts with `Turink-Toys` so the actions sit together among those
+other apps install, followed by the title its task manifest declares, and stays
+English in every language. A quick action names the command it runs, so the
+menu, the reference and the command line all answer to one name. The Image
+Viewer action finds the app by its bundle identifier; set `TURINK_TOYS_APP_ID`
+to choose between a release and a development build.
 
 The installer removes every name an action has previously been installed under,
 so upgrading from a release that named the bundle differently replaces the entry
