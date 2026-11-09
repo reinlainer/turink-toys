@@ -5,13 +5,14 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
+const { Readable } = require('stream');
 const { pathToFileURL } = require('url');
 const { protocol, net } = require('electron');
 const { images: formats } = require('@turink/core');
 
-// Photos reach the windows through two schemes of our own rather than file://,
-// so a page can only ever load image files, and the formats Chromium cannot
-// draw are converted on the way.
+// Photos, videos and PDFs reach the windows through two schemes of our own
+// rather than file://, so a page can only ever load the files the Images screen
+// shows, and the photo formats Chromium cannot draw are converted on the way.
 //
 // Electron's own nativeImage cannot read HEIC or TIFF, and its thumbnail call
 // returns the square that was asked for whatever the photo's shape. The macOS
@@ -39,7 +40,7 @@ function registerSchemes() {
 function targetOf(url) {
   try {
     const file = decodeURIComponent(new URL(url).pathname.slice(1));
-    if (!path.isAbsolute(file) || !formats.isImage(file)) return null;
+    if (!path.isAbsolute(file) || !formats.isMedia(file)) return null;
     return fs.statSync(file).isFile() ? file : null;
   } catch {
     return null;
@@ -88,14 +89,79 @@ function converted(file) {
   return job;
 }
 
+// ------------------------------------------------------------ video and PDF
+
+const TYPES = {
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  mov: 'video/quicktime',
+  webm: 'video/webm',
+  avi: 'video/x-msvideo',
+  mkv: 'video/x-matroska',
+  pdf: 'application/pdf',
+};
+
+// A video is read in pieces as it plays and as the person seeks, so a range
+// request gets exactly that range back. Handing the file to net.fetch would
+// answer every request with the whole file, which makes seeking in a large
+// video wait for all of it.
+function serveFile(file, request) {
+  const size = fs.statSync(file).size;
+  const headers = {
+    'Content-Type': TYPES[formats.extensionOf(file)] || 'application/octet-stream',
+    'Accept-Ranges': 'bytes',
+  };
+  const range = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get('range') || '');
+  if (!range || (range[1] === '' && range[2] === '')) {
+    return new Response(Readable.toWeb(fs.createReadStream(file)), {
+      status: 200,
+      headers: { ...headers, 'Content-Length': String(size) },
+    });
+  }
+  // "bytes=-500" asks for the last 500 bytes.
+  let start = range[1] === '' ? Math.max(0, size - Number(range[2])) : Number(range[1]);
+  let end = range[1] !== '' && range[2] !== '' ? Math.min(Number(range[2]), size - 1) : size - 1;
+  if (start >= size || start > end) {
+    return new Response(null, { status: 416, headers: { ...headers, 'Content-Range': `bytes */${size}` } });
+  }
+  return new Response(Readable.toWeb(fs.createReadStream(file, { start, end })), {
+    status: 206,
+    headers: { ...headers, 'Content-Length': String(end - start + 1), 'Content-Range': `bytes ${start}-${end}/${size}` },
+  });
+}
+
 async function serveImage(request) {
   const file = targetOf(request.url);
   if (!file) return notFound();
   try {
-    return fromFile(formats.kindOf(file) === 'direct' ? file : await converted(file));
+    const kind = formats.kindOf(file);
+    if (kind === 'video' || kind === 'pdf') return serveFile(file, request);
+    return fromFile(kind === 'direct' ? file : await converted(file));
   } catch {
     return notFound();
   }
+}
+
+// ------------------------------------------------------------ file facts
+
+// How long a video runs and how many pages a PDF has, from Spotlight, which
+// already knows without the file being opened. A folder Spotlight does not
+// index, such as a Google Drive one, answers with nothing, and the screen
+// then learns a video's length from the player instead.
+function facts(file) {
+  return new Promise((resolve) => {
+    if (!path.isAbsolute(file) || !formats.isMedia(file)) return resolve({});
+    execFile(
+      '/usr/bin/mdls',
+      ['-raw', '-name', 'kMDItemDurationSeconds', '-name', 'kMDItemNumberOfPages', '-name', 'kMDItemPixelWidth', '-name', 'kMDItemPixelHeight', file],
+      { timeout: 5000 },
+      (err, stdout) => {
+        if (err) return resolve({});
+        const [duration, pages, width, height] = String(stdout).split('\0').map((v) => (v === '(null)' || v === '' ? null : Number(v)));
+        resolve({ duration, pages, width, height });
+      }
+    );
+  });
 }
 
 // ------------------------------------------------------------ thumbnails
@@ -209,4 +275,4 @@ function handleProtocols() {
   setTimeout(prune, 10000);
 }
 
-module.exports = { registerSchemes, handleProtocols };
+module.exports = { registerSchemes, handleProtocols, facts };

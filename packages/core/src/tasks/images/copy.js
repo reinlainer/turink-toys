@@ -9,9 +9,9 @@ register(
   defineTask({
     id: 'images.copy',
     title: 'Copy photos',
-    summary: 'Copy photos into another folder',
+    summary: 'Copy photos, videos or PDFs into another folder',
     whenToUse:
-      'Putting copies of photos in a folder, for example the ones picked with images.select. A name already taken in the folder is never overwritten: the copy becomes "name 2.jpg", "name 3.jpg" and so on. Photos that cannot be copied are listed under failed while the rest go through.',
+      'Putting copies of photos, videos or PDFs in a folder, for example the ones picked with images.select. A name already taken in the folder is never overwritten: the copy becomes "name 2.jpg", "name 3.jpg" and so on. Photos that cannot be copied are listed under failed while the rest go through.',
     risk: 'create',
     cost: 'proportional',
     idempotent: false,

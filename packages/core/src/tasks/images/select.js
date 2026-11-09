@@ -13,9 +13,9 @@ register(
   defineTask({
     id: 'images.select',
     title: 'Select photos',
-    summary: 'Add photos to the selection, take them off it, or clear it',
+    summary: 'Add photos, videos or PDFs to the selection, take them off it, or clear it',
     whenToUse:
-      'Picking the photos that images.copy, images.move or images.trash will then work on, and the viewer shows as selected. Only the saved selection changes; no photo is touched. Photos already selected stay as they are, and when the selection changes, paths that no longer exist are dropped from it.',
+      'Picking the photos, videos or PDFs that images.copy, images.move or images.trash will then work on, and the viewer shows as selected. Only the saved selection changes; no file is touched. Files already selected stay as they are, and when the selection changes, paths that no longer exist are dropped from it.',
     risk: 'mutate',
     cost: 'instant',
     idempotent: true,
@@ -62,7 +62,7 @@ register(
     async execute(run, input) {
       const named = input.paths || [];
       if (!input.clear && named.length === 0) {
-        fail('INVALID_INPUT', 'Name at least one photo, or use --clear.', {
+        fail('INVALID_INPUT', 'Name at least one file, or use --clear.', {
           hint: 'Run "turink-toys help images.select" for an example.',
         });
       }

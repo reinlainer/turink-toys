@@ -5,43 +5,24 @@ const path = require('path');
 const { defineTask } = require('../../kernel/manifest');
 const { register } = require('../../kernel/registry');
 const { row } = require('../../kernel/present');
-const { requireFolder } = require('./files');
-const { isImage, kindOf, compareNames } = require('./formats');
+const { requireFolder, isPackage, visible } = require('./files');
+const { isMedia, kindOf, typeOf, compareNames } = require('./formats');
 
-// A package is a folder Finder shows as one file. Browsing into one would show
-// the inside of an app or a photo library, which a person never meant to open.
-const PACKAGE_EXTENSIONS = ['.app', '.photoslibrary', '.bundle', '.framework', '.plugin', '.pkg'];
-
-function isPackage(name) {
-  const lower = name.toLowerCase();
-  return PACKAGE_EXTENSIONS.some((extension) => lower.endsWith(extension));
-}
-
-function visible(name, hidden) {
-  return hidden || !name.startsWith('.');
-}
-
-// One readdir per subfolder is all the count costs, so a folder of thousands of
-// photos is not statted just to be counted.
-async function countImages(folder, hidden) {
-  try {
-    const entries = await fs.promises.readdir(folder, { withFileTypes: true });
-    return entries.filter(
-      (entry) => (entry.isFile() || entry.isSymbolicLink()) && visible(entry.name, hidden) && isImage(entry.name)
-    ).length;
-  } catch {
-    // A folder that cannot be read still appears, so it is not mistaken for
-    // missing; it just shows no count.
-    return 0;
-  }
-}
+// Folders always lead and always go by name; the sort only orders the files.
+// Ties fall back to the name so the order never depends on readdir.
+const KIND_ORDER = { photo: 0, video: 1, pdf: 2 };
+const SORTS = {
+  name: (a, b) => compareNames(a.name, b.name),
+  modified: (a, b) => Date.parse(b.modified) - Date.parse(a.modified) || compareNames(a.name, b.name),
+  kind: (a, b) => KIND_ORDER[a.type] - KIND_ORDER[b.type] || compareNames(a.name, b.name),
+};
 
 async function describeImage(folder, entry) {
   const file = path.join(folder, entry.name);
   try {
     const stat = await fs.promises.stat(file);
     if (!stat.isFile()) return null;
-    return { name: entry.name, path: file, bytes: stat.size, modified: stat.mtime.toISOString(), kind: kindOf(entry.name) };
+    return { name: entry.name, path: file, bytes: stat.size, modified: stat.mtime.toISOString(), kind: kindOf(entry.name), type: typeOf(entry.name) };
   } catch {
     // A dangling link or a file removed mid-listing is not worth failing for.
     return null;
@@ -52,9 +33,9 @@ register(
   defineTask({
     id: 'images.list',
     title: 'Browse photos',
-    summary: 'List the subfolders and photos in a folder',
+    summary: 'List the subfolders, photos, videos and PDFs in a folder',
     whenToUse:
-      'Looking at what photos a folder holds before selecting, copying, moving or trashing any. Reports the folders directly inside, each with a count of its photos, and the photos directly inside, both in Finder order. Hidden files, app and library packages and linked folders are left out. Reads the folder only.',
+      'Looking at what photos, videos and PDFs a folder holds before selecting, copying, moving or trashing any. Reports the folders directly inside, always first and in Finder order, and the files directly inside, in Finder order unless sort says otherwise. Hidden files, app and library packages and linked folders are left out. Folders carry no counts; use images.count for those. Reads the folder only.',
     risk: 'read',
     cost: 'cheap',
     idempotent: true,
@@ -75,6 +56,13 @@ register(
           default: false,
           description: 'Include files and folders whose names start with a dot.',
         },
+        sort: {
+          label: 'Sort by',
+          type: 'string',
+          enum: ['name', 'modified', 'kind'],
+          default: 'name',
+          description: 'How to order the files: name (Finder order), modified (newest first) or kind (photos, then videos, then PDFs, each by name). Folders are always first, by name.',
+        },
       },
     },
     output: {
@@ -82,8 +70,8 @@ register(
       properties: {
         folder: { type: 'string', description: 'The folder that was listed, as an absolute path.' },
         parent: { type: 'string', description: 'The folder above it, or null at the top of the disk.' },
-        folders: { type: 'array', description: 'Subfolders as { name, path, images }, where images counts the photos directly inside.' },
-        images: { type: 'array', description: 'Photos as { name, path, bytes, modified, kind }. kind is direct, convert or raw.' },
+        folders: { type: 'array', description: 'Subfolders as { name, path }, in Finder order. Use images.count to count what they hold.' },
+        images: { type: 'array', description: 'Photos, videos and PDFs directly inside as { name, path, bytes, modified, kind, type }. kind is direct, convert, raw, video or pdf; type is photo, video or pdf.' },
       },
     },
     examples: [
@@ -95,7 +83,7 @@ register(
         rows: [
           row(t('result.folder', 'Folder'), result && result.folder),
           row(t('result.folders', 'Folders'), String(((result && result.folders) || []).length)),
-          row(t('result.images', 'Photos'), String(((result && result.images) || []).length)),
+          row(t('result.files', 'Files'), String(((result && result.images) || []).length)),
         ],
       };
     },
@@ -110,24 +98,19 @@ register(
         (entry) => entry.isDirectory() && visible(entry.name, input.hidden) && !isPackage(entry.name)
       );
       const files = entries.filter(
-        (entry) => (entry.isFile() || entry.isSymbolicLink()) && visible(entry.name, input.hidden) && isImage(entry.name)
+        (entry) => (entry.isFile() || entry.isSymbolicLink()) && visible(entry.name, input.hidden) && isMedia(entry.name)
       );
 
-      const [folders, images] = await Promise.all([
-        Promise.all(
-          subfolders.map(async (entry) => {
-            const file = path.join(folder, entry.name);
-            return { name: entry.name, path: file, images: await countImages(file, input.hidden) };
-          })
-        ),
-        Promise.all(files.map((entry) => describeImage(folder, entry))),
-      ]);
+      const images = await Promise.all(files.map((entry) => describeImage(folder, entry)));
+      const sort = SORTS[input.sort] || SORTS.name;
 
       return {
         folder,
         parent: folder === path.dirname(folder) ? null : path.dirname(folder),
-        folders: folders.sort((a, b) => compareNames(a.name, b.name)),
-        images: images.filter(Boolean).sort((a, b) => compareNames(a.name, b.name)),
+        folders: subfolders
+          .map((entry) => ({ name: entry.name, path: path.join(folder, entry.name) }))
+          .sort(SORTS.name),
+        images: images.filter(Boolean).sort(sort),
       };
     },
   })

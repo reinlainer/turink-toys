@@ -9,9 +9,9 @@ register(
   defineTask({
     id: 'images.move',
     title: 'Move photos',
-    summary: 'Move photos into another folder',
+    summary: 'Move photos, videos or PDFs into another folder',
     whenToUse:
-      'Filing photos into a folder. A name already taken in the folder is never overwritten: the photo arrives as "name 2.jpg", "name 3.jpg" and so on. A moved photo that is in the selection stays selected under its new path. Photos that cannot be moved are listed under failed while the rest go through.',
+      'Filing photos, videos or PDFs into a folder. A name already taken in the folder is never overwritten: the photo arrives as "name 2.jpg", "name 3.jpg" and so on. A moved photo that is in the selection stays selected under its new path. Photos that cannot be moved are listed under failed while the rest go through.',
     risk: 'mutate',
     cost: 'proportional',
     idempotent: false,

@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld('turink', {
   watchImagesFolder: (folder) => ipcRenderer.invoke('images:watch', folder),
   imagesView: () => ipcRenderer.invoke('images:view'),
   setImagesView: (view) => ipcRenderer.invoke('images:setView', view),
+  imageFacts: (file) => ipcRenderer.invoke('images:facts', file),
+  openDefault: (file) => ipcRenderer.invoke('images:openDefault', file),
   openViewer: (file, list) => ipcRenderer.invoke('viewer:open', { file, list }),
   viewerShown: (file, width, height) => ipcRenderer.invoke('viewer:shown', { file, width, height }),
   viewerChrome: (visible) => ipcRenderer.invoke('viewer:chrome', visible),

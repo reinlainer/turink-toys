@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { fail } = require('../../kernel/errors');
 const { normalize } = require('../folders/store');
-const { isImage } = require('./formats');
+const { isMedia } = require('./formats');
 const store = require('./store');
 
 // Checks and file operations shared by the tasks that read, copy, move or
@@ -19,6 +19,19 @@ function statOrNull(target) {
   }
 }
 
+// A package is a folder Finder shows as one file. Browsing into one would show
+// the inside of an app or a photo library, which a person never meant to open.
+const PACKAGE_EXTENSIONS = ['.app', '.photoslibrary', '.bundle', '.framework', '.plugin', '.pkg'];
+
+function isPackage(name) {
+  const lower = name.toLowerCase();
+  return PACKAGE_EXTENSIONS.some((extension) => lower.endsWith(extension));
+}
+
+function visible(name, hidden) {
+  return hidden || !name.startsWith('.');
+}
+
 function requireFolder(target) {
   const resolved = normalize(target);
   const stat = statOrNull(resolved);
@@ -26,13 +39,14 @@ function requireFolder(target) {
     fail('SRC_NOT_FOUND', `There is no folder at ${resolved}.`, { hint: 'Check the path and try again.' });
   }
   if (!stat.isDirectory()) {
-    fail('NOT_A_FOLDER', `${resolved} is a file, not a folder.`, { hint: 'Give the folder that holds the photos.' });
+    fail('NOT_A_FOLDER', `${resolved} is a file, not a folder.`, { hint: 'Give the folder that holds the files.' });
   }
   return resolved;
 }
 
 // A path named twice counts once, so a list assembled from several selections
-// cannot copy or trash the same file twice.
+// cannot copy or trash the same file twice. Despite the name, videos and PDFs
+// pass too: the viewer shows them next to photos and files them the same way.
 function requireImages(targets) {
   const seen = new Set();
   const found = [];
@@ -45,9 +59,9 @@ function requireImages(targets) {
     if (!stat) {
       fail('SRC_NOT_FOUND', `There is no file at ${resolved}.`, { hint: 'Check the path and try again.' });
     }
-    if (!stat.isFile() || !isImage(resolved)) {
-      fail('NOT_AN_IMAGE', `${resolved} is not a photo this tool handles.`, {
-        hint: 'Only image files (jpg, png, heic, RAW and the like) can be used.',
+    if (!stat.isFile() || !isMedia(resolved)) {
+      fail('NOT_AN_IMAGE', `${resolved} is not a photo, video or PDF this tool handles.`, {
+        hint: 'Only photos (jpg, png, heic, RAW and the like), videos and PDFs can be used.',
       });
     }
     found.push({ path: resolved, bytes: stat.size });
@@ -135,4 +149,4 @@ async function transfer(run, mode, paths, to, storage) {
   return { folder, done, failed };
 }
 
-module.exports = { statOrNull, requireFolder, requireImages, uniqueName, copyInto, moveInto, transfer };
+module.exports = { PACKAGE_EXTENSIONS, isPackage, visible, statOrNull, requireFolder, requireImages, uniqueName, copyInto, moveInto, transfer };

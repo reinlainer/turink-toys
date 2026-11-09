@@ -686,7 +686,7 @@ async function routeOpen(target) {
     showScreen('images');
     return;
   }
-  if (!core.images.isImage(target)) return;
+  if (!core.images.isMedia(target)) return;
   const list = await folderImages(path.dirname(target));
   viewer.open(target, list.includes(target) ? list : [target]);
 }
@@ -699,11 +699,24 @@ app.on('open-file', (event, target) => {
   else openQueue.push(target);
 });
 
+// The bundle this copy runs from, so "make the default photo app" names this
+// very app: a development build and a release build have different ids.
+// Running from source there is no bundle of ours, and the release id is used.
+function bundleId() {
+  const plist = path.resolve(process.execPath, '..', '..', 'Info.plist');
+  try {
+    const match = /<key>CFBundleIdentifier<\/key>\s*<string>([^<]+)<\/string>/.exec(fs.readFileSync(plist, 'utf8'));
+    return match && match[1].startsWith('toys.turink.app') ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 ipcMain.handle('images:initial', () => {
   const home = app.getPath('home');
   const folder = imagesFolder || settings.get('images.lastFolder', null) || path.join(home, 'Pictures');
   imagesFolder = null;
-  return { folder, home };
+  return { folder, home, appId: bundleId() };
 });
 ipcMain.handle('images:remember', (event, folder) => settings.set('images.lastFolder', folder));
 ipcMain.handle('images:view', () => ({ wheel: 'nav', windowSize: 'first', ...settings.get('images.view', {}) }));
@@ -714,6 +727,13 @@ ipcMain.handle('images:setView', (event, view) => {
   return next;
 });
 
+ipcMain.handle('images:facts', (event, file) => images.facts(file));
+// A video the player cannot decode, such as ProRes, opens in the app macOS
+// would use. Only files the Images screen shows are passed on.
+ipcMain.handle('images:openDefault', (event, file) => {
+  if (typeof file !== 'string' || !path.isAbsolute(file) || !core.images.isMedia(file)) return 'refused';
+  return shell.openPath(file);
+});
 ipcMain.handle('viewer:open', (event, { file, list }) => viewer.open(file, list && list.length ? list : [file]));
 ipcMain.handle('viewer:shown', (event, { file, width, height }) => viewer.shown(file, { width, height }));
 ipcMain.handle('viewer:chrome', (event, visible) => viewer.showButtons(visible));

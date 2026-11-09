@@ -51,13 +51,16 @@ application in place.
 | `apps.list` | List installed applications that can be removed |
 | `apps.uninstall` | Move an application and the files it left in the Library to the Trash |
 | `apps.restore` | Return applications a previous removal moved to the Trash |
-| `images.list` | List the subfolders and photos in a folder |
-| `images.selected` | List the photos picked in the viewer |
-| `images.select` | Add photos to the selection, take them off it, or clear it |
-| `images.copy` | Copy photos into another folder |
-| `images.move` | Move photos into another folder |
-| `images.trash` | Move photos to the Trash |
-| `images.restore` | Return photos that a previous images.trash moved to the Trash |
+| `images.list` | List the subfolders, photos, videos and PDFs in a folder |
+| `images.count` | Count the photos, videos and PDFs inside folders, and pick a few to preview |
+| `images.selected` | List the items picked in the viewer |
+| `images.select` | Add photos, videos or PDFs to the selection, take them off it, or clear it |
+| `images.copy` | Copy photos, videos or PDFs into another folder |
+| `images.move` | Move photos, videos or PDFs into another folder |
+| `images.trash` | Move photos, videos or PDFs to the Trash |
+| `images.restore` | Return items that a previous images.trash moved to the Trash |
+| `images.default-app` | Show which application opens each photo type by default |
+| `images.set-default-app` | Make an application the default for photo types, or give them back to Preview |
 | `mouse.status` | Report whether the mouse wheel direction is reversed |
 | `mouse.reverse` | Reverse the scroll direction of mouse wheels and leave the trackpad as it is |
 
@@ -233,7 +236,7 @@ The window has one screen per area rather than one per task:
 | Disk Cleanup | `disk.targets` and `disk.report` as one sized list, `disk.clean` on the selection, and `disk.restore` from the list of recent cleanups |
 | Applications | `apps.list` with icons and search, `apps.uninstall` on the selection, and `apps.restore` from the list of recent removals |
 | Power | `power.status` as a summary, with `power.keep-awake` and `power.lid` as two settings. The lid setting runs under the macOS administrator prompt |
-| Images | `images.list` as subfolders and thumbnails beside a large preview, `images.select` and `images.selected` for the photos gathered across folders, `images.copy` and `images.move` to send them on, `images.trash` and `images.restore` behind ⌘⌫ and Undo |
+| Images | `images.list` as subfolders and thumbnails beside a large preview, sorted by name, date or kind; `images.count` fills each folder tile with photos from inside it and a count that includes its subfolders; `images.select` and `images.selected` for the items gathered across folders, shown in a strip under the path; `images.copy` and `images.move` to send them on, `images.trash` and `images.restore` behind ⌘⌫ and Undo; `images.default-app` and `images.set-default-app` behind View Options |
 | More | Small tools as cards, currently `mouse.status` and `mouse.reverse` as one switch. A tool moves to a screen of its own once it grows |
 
 The tasks themselves stay separate, because that is the contract the command
@@ -257,9 +260,19 @@ WebP, AVIF and BMP are drawn directly; HEIC, TIFF and camera RAW files are
 converted with the macOS `sips` tool and thumbnails come from Quick Look, both
 cached under `~/Library/Caches/Turink Toys/images`.
 
-The bundle declares itself a viewer for images, so it appears under Open With
-in Finder and can be made the default image app there. It never takes that
-place on its own.
+Videos and PDFs sit among the photos. A video plays in the preview and in the
+viewer, served in ranges so seeking does not wait for the whole file; H.264 and
+HEVC play, and a codec Chromium does not carry, such as ProRes, offers the
+default app instead. A PDF scrolls through its pages in Chromium's own viewer.
+Video length and page count come from Spotlight, and the player supplies a
+video's length where Spotlight does not index the folder.
+
+The bundle declares itself a viewer for images, videos and PDFs, so it appears
+under Open With in Finder. It never becomes the default app on its own.
+`images.set-default-app` makes it the default for nine photo types through the
+small helper `Turink-Toys Default App`; since macOS 26.4 the system asks once
+per type before it changes, and a type where the person keeps the current app
+stays as it was. Changing it in Finder's Get Info window asks nothing.
 
 The Activity panel, closed by default, shows runs as they happen, including
 ones this window did not start. A task invoked from the terminal or from a

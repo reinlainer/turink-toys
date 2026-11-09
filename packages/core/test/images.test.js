@@ -31,8 +31,12 @@ const run = { progress() {}, warn(code, payload) { this.warnings.push({ code, ..
 
 // Tasks that read the real settings are exercised only where they leave them
 // alone; anything that writes goes through the helpers with memory storage.
-function list(folder, hidden) {
-  return core.registry.get('images.list').execute(run, { folder, hidden: hidden === true });
+function list(folder, hidden, sort) {
+  return core.registry.get('images.list').execute(run, { folder, hidden: hidden === true, sort });
+}
+
+function count(folders, hidden) {
+  return core.registry.get('images.count').execute(run, { folders, hidden: hidden === true });
 }
 
 test('formats sort into direct, convert and raw, whatever the letter case', () => {
@@ -46,7 +50,25 @@ test('formats sort into direct, convert and raw, whatever the letter case', () =
   assert.strictEqual(formats.kindOf('jpg'), null);
   assert.strictEqual(formats.isImage('x.png'), true);
   assert.strictEqual(formats.isImage('x.pdf'), false);
+  assert.strictEqual(formats.isImage('x.mp4'), false);
   assert.strictEqual(core.images.isImage, formats.isImage);
+});
+
+test('typeOf and isMedia tell photos, videos and PDFs apart', () => {
+  assert.strictEqual(formats.typeOf('a.JPG'), 'photo');
+  assert.strictEqual(formats.typeOf('a.cr3'), 'photo');
+  assert.strictEqual(formats.typeOf('a.MP4'), 'video');
+  assert.strictEqual(formats.typeOf('a.mkv'), 'video');
+  assert.strictEqual(formats.typeOf('a.pdf'), 'pdf');
+  assert.strictEqual(formats.typeOf('a.txt'), null);
+  assert.strictEqual(formats.kindOf('a.mov'), 'video');
+  assert.strictEqual(formats.kindOf('a.pdf'), 'pdf');
+  assert.strictEqual(formats.isMedia('a.pdf'), true);
+  assert.strictEqual(formats.isMedia('a.webm'), true);
+  assert.strictEqual(formats.isMedia('a.heic'), true);
+  assert.strictEqual(formats.isMedia('a.zip'), false);
+  assert.strictEqual(core.images.isMedia, formats.isMedia);
+  assert.strictEqual(core.images.typeOf, formats.typeOf);
 });
 
 test('names sort the way Finder shows them', () => {
@@ -59,9 +81,12 @@ test('the new codes are registered and fail with the general exit code', () => {
   assert.strictEqual(core.errors.CODES.NOT_AN_IMAGE, core.errors.EXIT.FAILED);
 });
 
-test('all seven tasks are registered with the expected risk', () => {
+test('all tasks are registered with the expected risk', () => {
   const expected = {
     'images.list': 'read',
+    'images.count': 'read',
+    'images.default-app': 'read',
+    'images.set-default-app': 'mutate',
     'images.selected': 'read',
     'images.select': 'mutate',
     'images.copy': 'create',
@@ -73,11 +98,13 @@ test('all seven tasks are registered with the expected risk', () => {
   assert.strictEqual(core.registry.get('images.select').preference, true);
 });
 
-test('listing separates folders from photos, counts photos in folders and sorts by name', async () => {
+test('listing separates folders from files, adds videos and PDFs and sorts by name', async () => {
   const dir = temp();
   touch(dir, 'IMG_10.jpg', '1234');
   touch(dir, 'IMG_2.HEIC');
   touch(dir, 'notes.txt');
+  touch(dir, 'clip.mp4');
+  touch(dir, 'doc.pdf');
   touch(dir, '.hidden.jpg');
   touch(dir, 'trip 2/a.jpg');
   touch(dir, 'trip 2/b.png');
@@ -90,17 +117,47 @@ test('listing separates folders from photos, counts photos in folders and sorts 
   const result = await list(dir);
   assert.strictEqual(result.folder, dir);
   assert.strictEqual(result.parent, path.dirname(dir));
-  assert.deepStrictEqual(result.images.map((i) => i.name), ['IMG_2.HEIC', 'IMG_10.jpg']);
-  assert.deepStrictEqual(result.images.map((i) => i.kind), ['convert', 'direct']);
-  assert.strictEqual(result.images[1].bytes, 4);
-  assert.strictEqual(result.images[1].path, path.join(dir, 'IMG_10.jpg'));
-  assert.ok(!Number.isNaN(Date.parse(result.images[1].modified)));
-  assert.deepStrictEqual(result.folders.map((f) => [f.name, f.images]), [['trip 2', 2], ['trip 10', 1]]);
+  assert.deepStrictEqual(result.images.map((i) => i.name), ['clip.mp4', 'doc.pdf', 'IMG_2.HEIC', 'IMG_10.jpg']);
+  assert.deepStrictEqual(result.images.map((i) => i.kind), ['video', 'pdf', 'convert', 'direct']);
+  assert.deepStrictEqual(result.images.map((i) => i.type), ['video', 'pdf', 'photo', 'photo']);
+  const photo = result.images[3];
+  assert.strictEqual(photo.bytes, 4);
+  assert.strictEqual(photo.path, path.join(dir, 'IMG_10.jpg'));
+  assert.ok(!Number.isNaN(Date.parse(photo.modified)));
+  assert.deepStrictEqual(result.folders, [
+    { name: 'trip 2', path: path.join(dir, 'trip 2') },
+    { name: 'trip 10', path: path.join(dir, 'trip 10') },
+  ]);
 
   const withHidden = await list(dir, true);
   assert.ok(withHidden.images.some((i) => i.name === '.hidden.jpg'));
   assert.ok(withHidden.folders.some((f) => f.name === '.secret'));
   assert.ok(!withHidden.folders.some((f) => f.name.endsWith('.app')));
+});
+
+test('listing sorts files by name, newest first, or by kind, with folders always first', async () => {
+  const dir = temp();
+  const old = touch(dir, 'b.jpg');
+  const mid = touch(dir, 'a.mp4');
+  const fresh = touch(dir, 'c.pdf');
+  touch(dir, 'z.png');
+  fs.mkdirSync(path.join(dir, 'zeta'));
+  fs.mkdirSync(path.join(dir, 'alpha'));
+  fs.utimesSync(old, new Date(2020, 0, 1), new Date(2020, 0, 1));
+  fs.utimesSync(mid, new Date(2021, 0, 1), new Date(2021, 0, 1));
+  fs.utimesSync(fresh, new Date(2022, 0, 1), new Date(2022, 0, 1));
+  fs.utimesSync(path.join(dir, 'z.png'), new Date(2019, 0, 1), new Date(2019, 0, 1));
+
+  const names = async (sort) => (await list(dir, false, sort)).images.map((i) => i.name);
+  assert.deepStrictEqual(await names(undefined), ['a.mp4', 'b.jpg', 'c.pdf', 'z.png']);
+  assert.deepStrictEqual(await names('name'), ['a.mp4', 'b.jpg', 'c.pdf', 'z.png']);
+  assert.deepStrictEqual(await names('modified'), ['c.pdf', 'a.mp4', 'b.jpg', 'z.png']);
+  assert.deepStrictEqual(await names('kind'), ['b.jpg', 'z.png', 'a.mp4', 'c.pdf']);
+  for (const sort of ['name', 'modified', 'kind']) {
+    assert.deepStrictEqual((await list(dir, false, sort)).folders.map((f) => f.name), ['alpha', 'zeta']);
+  }
+  const enumeration = core.registry.get('images.list').input.properties.sort;
+  assert.deepStrictEqual(enumeration.enum, ['name', 'modified', 'kind']);
 });
 
 test('listing does not follow a linked folder but shows a linked photo', async () => {
@@ -202,6 +259,23 @@ test('only existing photos can be named, and anything else is refused up front',
   assert.throws(() => files.requireImages([photo, path.join(dir, 'missing.jpg')]), { code: 'SRC_NOT_FOUND' });
   assert.throws(() => files.requireFolder(photo), { code: 'NOT_A_FOLDER' });
   assert.throws(() => files.requireFolder(path.join(dir, 'nope')), { code: 'SRC_NOT_FOUND' });
+});
+
+test('videos and PDFs can be named, copied and planned for the Trash like photos', async () => {
+  const dir = temp();
+  const video = touch(dir, 'clip.mp4', 'vv');
+  const pdf = touch(dir, 'doc.PDF', 'ppp');
+  assert.deepStrictEqual(files.requireImages([video, pdf]), [{ path: video, bytes: 2 }, { path: pdf, bytes: 3 }]);
+  assert.throws(() => files.requireImages([touch(dir, 'a.txt')]), (err) => err.code === 'NOT_AN_IMAGE' && /photo, video or PDF/.test(err.message));
+
+  const dest = temp();
+  const { done } = await files.transfer(run, 'copy', [video, pdf], dest);
+  assert.deepStrictEqual(done.map((d) => path.basename(d.to)), ['clip.mp4', 'doc.PDF']);
+  const plan = await core.registry.get('images.trash').plan(run, { paths: [video, pdf] });
+  assert.strictEqual(plan.bytes, 5);
+
+  const selected = await core.registry.get('images.select').execute(run, { paths: [dir + '/nope.mp4'], off: true });
+  assert.strictEqual(selected.selected >= 0, true);
 });
 
 test('a taken name gets "name 2", "name 3" like Finder', () => {
@@ -363,4 +437,160 @@ test('every input of the new tasks has Korean text', () => {
     const localized = core.i18n.localizeError({ code, message: 'm', hint: 'h' }, 'ko');
     assert.notStrictEqual(localized.message, 'm');
   }
+});
+
+// Many empty files are enough to count; the task only ever reads listings.
+function fill(dir, n, name = (i) => `p${i}.jpg`) {
+  fs.mkdirSync(dir, { recursive: true });
+  for (let i = 0; i < n; i += 1) fs.writeFileSync(path.join(dir, name(i)), '');
+}
+
+test('counting finds photos, videos and PDFs at every depth and counts direct subfolders', async () => {
+  const dir = temp();
+  touch(dir, 'a/b/c/deep.jpg');
+  touch(dir, 'a/clip.mov');
+  touch(dir, 'doc.pdf');
+  touch(dir, 'notes.txt');
+  fs.mkdirSync(path.join(dir, 'empty'));
+
+  const [result] = (await count([dir])).folders;
+  assert.strictEqual(result.path, dir);
+  assert.deepStrictEqual(
+    { photos: result.photos, videos: result.videos, pdfs: result.pdfs, folders: result.folders, capped: result.capped, partial: result.partial },
+    { photos: 1, videos: 1, pdfs: 1, folders: 2, capped: false, partial: false }
+  );
+});
+
+test('counting skips hidden items and packages unless hidden is asked for', async () => {
+  const dir = temp();
+  touch(dir, 'a.jpg');
+  touch(dir, '.hidden.jpg');
+  touch(dir, '.secret/a.jpg');
+  touch(dir, 'Library.photoslibrary/a.jpg');
+  touch(dir, 'Thing.app/a.jpg');
+
+  const [plain] = (await count([dir])).folders;
+  assert.deepStrictEqual([plain.photos, plain.folders], [1, 0]);
+  const [all] = (await count([dir], true)).folders;
+  // A package stays out even when hidden items are shown.
+  assert.deepStrictEqual([all.photos, all.folders], [3, 1]);
+});
+
+test('counting never follows a linked folder but counts a linked photo', async () => {
+  const dir = temp();
+  const real = touch(dir, 'real/a.jpg');
+  fs.symlinkSync(path.join(dir, 'real'), path.join(dir, 'loop'));
+  fs.symlinkSync(path.dirname(dir), path.join(dir, 'up'));
+  fs.symlinkSync(real, path.join(dir, 'link.jpg'));
+
+  const [result] = (await count([dir])).folders;
+  assert.deepStrictEqual([result.photos, result.folders], [2, 1]);
+});
+
+test('counting stops at 1000 files and says so', async () => {
+  const dir = temp();
+  fill(path.join(dir, 'one'), 600);
+  fill(path.join(dir, 'two'), 600, (i) => `v${i}.mp4`);
+
+  const [result] = (await count([dir])).folders;
+  assert.strictEqual(result.capped, true);
+  assert.strictEqual(result.photos + result.videos + result.pdfs, 1000);
+  assert.ok(result.previews.length <= 9);
+});
+
+test('counting reads down to depth 8 and no further', async () => {
+  const dir = temp();
+  const nest = (levels) => Array.from({ length: levels }, (_, i) => `d${i}`).join('/');
+  touch(dir, `${nest(8)}/in.jpg`);
+  touch(dir, `${nest(9)}/out.jpg`);
+
+  const [result] = (await count([dir])).folders;
+  assert.strictEqual(result.photos, 1);
+  assert.strictEqual(result.partial, false);
+});
+
+test('counting picks previews from the files inside first, then subfolders breadth first', async () => {
+  const dir = temp();
+  touch(dir, 'IMG_10.jpg');
+  touch(dir, 'IMG_2.jpg');
+  touch(dir, 'b/z.jpg');
+  touch(dir, 'a/deep/x.jpg');
+  touch(dir, 'a/y.jpg');
+  touch(dir, 'clip.mp4');
+
+  const [result] = (await count([dir])).folders;
+  const names = result.previews.map((p) => path.relative(dir, p));
+  // Videos only fill in when there are too few photos, and then come after them.
+  assert.deepStrictEqual(names, ['IMG_2.jpg', 'IMG_10.jpg', 'a/y.jpg', 'b/z.jpg', 'a/deep/x.jpg', 'clip.mp4']);
+});
+
+test('counting offers up to nine previews and prefers photos over videos', async () => {
+  const dir = temp();
+  fill(dir, 12);
+  touch(dir, 'a.mp4');
+  const [result] = (await count([dir])).folders;
+  assert.strictEqual(result.previews.length, 9);
+  assert.ok(result.previews.every((p) => p.endsWith('.jpg')));
+});
+
+test('counting reports a missing path or a file per entry without failing the call', async () => {
+  const dir = temp();
+  const file = touch(dir, 'a.jpg');
+  touch(dir, 'ok/a.jpg');
+  const result = await count([path.join(dir, 'nope'), file, path.join(dir, 'ok')]);
+  assert.deepStrictEqual(result.folders[0], { path: path.join(dir, 'nope'), error: 'SRC_NOT_FOUND' });
+  assert.deepStrictEqual(result.folders[1], { path: file, error: 'NOT_A_FOLDER' });
+  assert.strictEqual(result.folders[2].photos, 1);
+});
+
+test('counting keeps an answer for a minute unless the folder changes', async () => {
+  const dir = temp();
+  touch(dir, 'a.jpg');
+  fs.mkdirSync(path.join(dir, 'sub'));
+  assert.strictEqual((await count([dir])).folders[0].photos, 1);
+
+  // A file added in a nested folder does not touch the top folder's mtime, so
+  // the remembered answer is returned.
+  fs.writeFileSync(path.join(dir, 'sub', 'b.jpg'), '');
+  assert.strictEqual((await count([dir])).folders[0].photos, 1);
+
+  // A change that moves the folder's own mtime is counted again.
+  fs.writeFileSync(path.join(dir, 'c.jpg'), '');
+  fs.utimesSync(dir, new Date(), new Date(Date.now() + 5000));
+  assert.strictEqual((await count([dir])).folders[0].photos, 3);
+});
+
+test('a count that runs out of time is partial and is not remembered', async () => {
+  const dir = temp();
+  touch(dir, 'a/a.jpg');
+  const counting = require('../src/tasks/images/count');
+  let tick = 0;
+  // Each look at the clock is 1 second later, so the 1.5 second budget is
+  // gone after the first folder.
+  const result = await counting.walk(dir, false, () => (tick += 1000));
+  assert.strictEqual(result.partial, true);
+});
+
+test('the default-app task lists the nine photo types and Turink Toys as the default', () => {
+  const app = require('../src/tasks/images/default-app');
+  assert.deepStrictEqual(app.UTIS, [
+    'public.jpeg', 'public.png', 'public.heic', 'public.heif', 'public.tiff',
+    'com.compuserve.gif', 'org.webmproject.webp', 'public.avif', 'com.microsoft.bmp',
+  ]);
+  assert.deepStrictEqual(app.TYPES.map((t) => t.name), ['JPEG', 'PNG', 'HEIC', 'HEIF', 'TIFF', 'GIF', 'WebP', 'AVIF', 'BMP']);
+  assert.strictEqual(app.OUR_APP, 'toys.turink.app');
+  const set = core.registry.get('images.set-default-app');
+  assert.strictEqual(set.preference, true);
+  assert.strictEqual(set.idempotent, true);
+});
+
+test('default-app status reads the system through the helper without changing it', { skip: !require('../src/tasks/images/default-app').helperAvailable() }, async () => {
+  const result = await core.registry.get('images.default-app').execute(run, {});
+  assert.strictEqual(result.app, 'toys.turink.app');
+  assert.strictEqual(result.types.length, 9);
+  for (const type of result.types) {
+    assert.ok(type.handler === null || typeof type.handler === 'string');
+    assert.strictEqual(type.ours, type.handler === 'toys.turink.app');
+  }
+  assert.strictEqual(result.allOurs, result.types.every((t) => t.ours));
 });

@@ -1,7 +1,7 @@
 'use strict';
 
 // The viewer window: one photo filling the window, the folder's other photos a
-// key or a swipe away, and every control kept at the edges until the pointer
+// key or a swipe away, videos and PDFs among them shown in place, and every control kept at the edges until the pointer
 // goes there. Selecting and moving to the Trash run the same images.* tasks as
 // the Images screen.
 
@@ -14,6 +14,7 @@
   const ui = {
     port: document.getElementById('viewport'),
     photo: document.getElementById('photo'),
+    media: document.getElementById('media'),
     badge: document.getElementById('badge'),
     top: document.getElementById('edge-top'),
     title: document.getElementById('title'),
@@ -30,6 +31,13 @@
   const format = (template, params) =>
     String(template || '').replace(/\{(\w+)\}/g, (m, k) => (params && params[k] !== undefined ? params[k] : m));
   const baseName = (file) => file.split('/').pop();
+  // The same split as the core's formats table: anything not a video or a PDF
+  // is a photo, since only those three reach the viewer.
+  const VIDEO = ['mp4', 'mov', 'm4v', 'webm', 'avi', 'mkv'];
+  const typeOf = (file) => {
+    const ext = file.split('.').pop().toLowerCase();
+    return VIDEO.includes(ext) ? 'video' : ext === 'pdf' ? 'pdf' : 'photo';
+  };
 
   let t = {};
   let view = { wheel: 'nav' };
@@ -101,7 +109,8 @@
       el('b', null, baseName(file)),
       el('span', null, format(t.position, { index: state.index + 1, count: state.list.length }))
     );
-    if (state.photo) ui.title.appendChild(el('span', null, `${state.photo.width} × ${state.photo.height}`));
+    const size = state.photo || state.media;
+    if (size && size.width) ui.title.appendChild(el('span', null, `${size.width} × ${size.height}`));
     document.title = baseName(file);
 
     ui.lock.textContent = '';
@@ -173,7 +182,7 @@
     const keep = new Set();
     for (const offset of [1, -1, 2, -2]) {
       const file = state.list[state.index + offset];
-      if (!file) continue;
+      if (!file || typeOf(file) !== 'photo') continue;
       keep.add(file);
       if (!ahead.has(file)) {
         const img = new Image();
@@ -186,14 +195,73 @@
   }
 
   let loading = 0;
+
+  function clearMedia() {
+    for (const v of ui.media.querySelectorAll('video')) v.pause();
+    ui.media.textContent = '';
+    ui.media.hidden = true;
+    ui.photo.hidden = false;
+    document.body.classList.remove('media-mode');
+  }
+
+  // A video plays and a PDF scrolls in the window; zooming is the player's
+  // and the PDF viewer's own business, so the photo controls step aside.
+  function showMedia(index, file, token) {
+    state.index = index;
+    state.photo = null;
+    ui.photo.hidden = true;
+    ui.photo.removeAttribute('src');
+    ui.media.textContent = '';
+    ui.media.hidden = false;
+    document.body.classList.add('media-mode');
+    if (typeOf(file) === 'pdf') {
+      const pages = el('iframe');
+      pages.src = `${imageURL(file)}#toolbar=0&navpanes=0&view=FitH`;
+      pages.title = baseName(file);
+      ui.media.appendChild(pages);
+      window.turink.viewerShown(file, 850, 1100);
+    } else {
+      const video = el('video');
+      video.controls = true;
+      video.autoplay = true;
+      video.src = imageURL(file);
+      video.addEventListener('loadedmetadata', () => {
+        if (token !== loading) return;
+        state.media = { width: video.videoWidth, height: video.videoHeight };
+        renderChrome();
+        window.turink.viewerShown(file, video.videoWidth || 1280, video.videoHeight || 720);
+      });
+      // A codec Chromium does not carry, such as ProRes, gets its Quick Look
+      // frame and the app macOS would use.
+      video.addEventListener('error', () => {
+        if (token !== loading) return;
+        ui.media.textContent = '';
+        const poster = el('img', 'poster');
+        poster.src = `turink-thumb://t/${encodeURIComponent(file)}?s=1024`;
+        const fallback = el('div', 'fallback');
+        const open = el('button', null, t.openDefault);
+        open.type = 'button';
+        open.addEventListener('click', () => window.turink.openDefault(file));
+        fallback.append(el('span', null, t.cannotPlay), open);
+        ui.media.append(poster, fallback);
+      });
+      ui.media.appendChild(video);
+    }
+    state.media = null;
+    renderChrome();
+    prefetch();
+  }
+
   function show(index, { opening = false } = {}) {
     if (index < 0 || index >= state.list.length) return;
     const file = state.list[index];
     const token = ++loading;
+    if (typeOf(file) !== 'photo') return showMedia(index, file, token);
     const keep = !opening && state.keepZoom && state.photo;
     const img = new Image();
     img.onload = () => {
       if (token !== loading) return;
+      clearMedia();
       state.index = index;
       state.photo = { width: img.naturalWidth, height: img.naturalHeight };
       ui.photo.src = img.src;
@@ -211,6 +279,7 @@
     };
     img.onerror = () => {
       if (token !== loading) return;
+      clearMedia();
       state.index = index;
       renderChrome();
       hud(t.failed);
@@ -337,7 +406,13 @@
     'wheel',
     (e) => {
       e.preventDefault();
-      if (!state.photo) return;
+      if (!state.photo) {
+        const file = current();
+        if (!file || typeOf(file) !== 'video') return;
+        const intent = wheel.interpret(e, { zoomed: false, wheel: 'nav' }, performance.now());
+        if (intent.type === 'page') step(intent.step);
+        return;
+      }
       const r = ui.port.getBoundingClientRect();
       const point = { x: e.clientX - r.left, y: e.clientY - r.top };
       const zoomed = math.larger(state.pos, state.photo, port());
@@ -396,7 +471,11 @@
     else if (e.metaKey && (k === '=' || k === '+')) zoomAt(state.pos.scale * 1.25, center);
     else if (e.metaKey && k === '-') zoomAt(state.pos.scale / 1.25, center);
     else if (e.metaKey) return;
-    else if (k === 'Escape' || k === ' ') window.turink.closeViewer();
+    else if (k === ' ' && current() && typeOf(current()) === 'video' && ui.media.querySelector('video')) {
+      const video = ui.media.querySelector('video');
+      if (video.paused) video.play();
+      else video.pause();
+    } else if (k === 'Escape' || k === ' ') window.turink.closeViewer();
     else if (k === 'ArrowRight' || k === 'PageDown') step(1);
     else if (k === 'ArrowLeft' || k === 'PageUp') step(-1);
     else if (k === 'Home') show(0);

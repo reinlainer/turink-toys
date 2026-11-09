@@ -4,5 +4,11 @@
     "executable": "scroll-reverser",
     "name": "Turink-Toys Scroll Reverser",
     "identifier": "toys.turink.app.scroll-reverser"
+  },
+  {
+    "source": "default-app.swift",
+    "executable": "default-app",
+    "name": "Turink-Toys Default App",
+    "identifier": "toys.turink.app.default-app"
   }
 ]

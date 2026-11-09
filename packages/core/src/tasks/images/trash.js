@@ -11,9 +11,9 @@ register(
   defineTask({
     id: 'images.trash',
     title: 'Move photos to the Trash',
-    summary: 'Move photos to the Trash',
+    summary: 'Move photos, videos or PDFs to the Trash',
     whenToUse:
-      'Getting rid of photos. The plan lists every photo and its size before anything moves, and images.restore puts them back from the Trash. Only image files are accepted, so a wrong path cannot trash anything else.',
+      'Getting rid of photos, videos or PDFs. The plan lists every file and its size before anything moves, and images.restore puts them back from the Trash. Only photos, videos and PDFs are accepted, so a wrong path cannot trash anything else.',
     risk: 'destroy',
     cost: 'proportional',
     idempotent: false,

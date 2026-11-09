@@ -159,15 +159,27 @@ function main() {
       // The window and the menu bar item are the interface. A Dock tile is
       // still wanted, so the app is not declared an agent.
       LSApplicationCategoryType: 'public.app-category.utilities',
-      // Photos open in the viewer from Finder's Open With menu. The rank is
-      // Alternate so installing never takes over as the default image app;
-      // the person makes it the default themselves.
+      // Photos, videos and PDFs open in the viewer from Finder's Open With
+      // menu. The rank is Alternate so installing never takes over as the
+      // default app for any of them; the person makes it the default.
       CFBundleDocumentTypes: [
         {
           CFBundleTypeName: 'Image',
           CFBundleTypeRole: 'Viewer',
           LSHandlerRank: 'Alternate',
           LSItemContentTypes: ['public.image'],
+        },
+        {
+          CFBundleTypeName: 'Movie',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          LSItemContentTypes: ['public.movie'],
+        },
+        {
+          CFBundleTypeName: 'PDF',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          LSItemContentTypes: ['com.adobe.pdf'],
         },
       ],
     })

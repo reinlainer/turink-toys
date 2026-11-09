@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: turink-image: turink-thumb:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: turink-image: turink-thumb:; media-src turink-image:; frame-src turink-image:;">
 <title>Turink Toys</title>
 <style>
   /* The viewer is dark whatever the system theme, so the photo is the only
@@ -22,6 +22,14 @@
   .viewport { position: absolute; inset: 0; overflow: hidden; }
   .viewport.grab { cursor: grab; }
   .viewport.grabbing { cursor: grabbing; }
+  /* A video or a PDF fills the window instead of the zoomable photo. */
+  .media { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+  .media[hidden] { display: none; }
+  .media video { max-width: 100%; max-height: 100%; outline: none; }
+  .media iframe { width: 100%; height: 100%; border: 0; background: #2a2d31; }
+  .media .poster { max-width: 80%; max-height: 70%; opacity: 0.6; }
+  .media .fallback { position: absolute; bottom: 48px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #ddd; font-size: 13px; }
+  .media .fallback button { font: inherit; padding: 6px 14px; border-radius: 8px; border: 0; background: #3fb3ba; color: #0b2224; font-weight: 600; cursor: pointer; }
   .photo { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; will-change: transform; pointer-events: none; }
 
   .edge-top {
@@ -38,6 +46,7 @@
   .tool { border: 0; background: none; color: #c9d1d9; padding: 4px 7px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
   .tool:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
   .tool.on { color: #7fd3d8; }
+  body.media-mode #zoom, body.media-mode #lock { display: none; }
 
   .edge-bottom {
     position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto;
@@ -65,7 +74,7 @@
 </style>
 </head>
 <body>
-  <div class="viewport" id="viewport"><img class="photo" id="photo" alt="" draggable="false"></div>
+  <div class="viewport" id="viewport"><img class="photo" id="photo" alt="" draggable="false"><div class="media" id="media" hidden></div></div>
   <div class="badge" id="badge"></div>
   <div class="edge-top" id="edge-top">
     <div class="title" id="title"></div>

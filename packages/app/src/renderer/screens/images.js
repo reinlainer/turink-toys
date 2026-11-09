@@ -1,22 +1,25 @@
 'use strict';
 
-// Photos in a folder: subfolders and thumbnails on the left, the chosen photo
-// large on the right, and the photos a person selected gathered across folders.
-// Reading a folder, selecting and copying or moving all go through images.*
-// tasks, so the command line and an agent see the same folders and the same
-// selection. Double-clicking a photo opens the viewer window.
+// Photos, videos and PDFs in a folder. The thumbnail column has the path above
+// it, a strip for what is selected when anything is, and a bar below for how
+// the list is shown; the preview beside it shows the focused item large.
+// Reading a folder, counting what its subfolders hold, selecting and copying or
+// moving all go through images.* tasks, so the command line and an agent see
+// the same folders and the same selection. Double-clicking opens the viewer.
 
 (function () {
   const screens = (window.TurinkScreens = window.TurinkScreens || []);
+  const { createPreview, countLine, clock, thumbURL } = window.TurinkImagesPreview;
 
-  const thumbURL = (file, size) =>
-    `turink-thumb://t/${encodeURIComponent(file)}?s=${Math.round(size * (window.devicePixelRatio || 1))}`;
-  const imageURL = (file) => `turink-image://f/${encodeURIComponent(file)}`;
   const folderKey = (file) => `folder:${file}`;
   const isFolderKey = (key) => typeof key === 'string' && key.startsWith('folder:');
+  // Thumbnails come in a few sizes so the cache is shared as the grid grows;
+  // a tile is asked again only when it outgrows the size it has.
+  const STEPS = [128, 256, 512, 1024];
+  const step = (size) => STEPS.find((s) => s >= size * (window.devicePixelRatio || 1)) || 1024;
 
   // Conveniences kept per window rather than as settings shared with the
-  // command line: how large the thumbnails are and where photos were sent.
+  // command line: thumbnail size, sort order and where items were sent.
   const local = {
     get(key, fallback) {
       try {
@@ -46,7 +49,18 @@
   screens.push({
     id: 'images',
     icon: 'image',
-    tasks: ['images.list', 'images.selected', 'images.select', 'images.copy', 'images.move', 'images.trash', 'images.restore'],
+    tasks: [
+      'images.list',
+      'images.count',
+      'images.selected',
+      'images.select',
+      'images.copy',
+      'images.move',
+      'images.trash',
+      'images.restore',
+      'images.default-app',
+      'images.set-default-app',
+    ],
 
     mount(root, ctx) {
       const { el, icon, s, format, formatBytes } = ctx;
@@ -54,16 +68,21 @@
       const state = {
         folder: null,
         home: null,
+        appId: null,
         listing: null,
+        counts: new Map(),
         picks: [],
         scope: 'folder',
         selected: null,
         tile: local.get('tile', 132),
+        sort: local.get('sort', 'name'),
         view: { wheel: 'nav', windowSize: 'first' },
       };
 
       // ------------------------------------------------ layout
 
+      const body = el('div', 'images-body');
+      const gridColumn = el('div', 'images-grid-column');
       const toolbar = el('div', 'images-toolbar');
       const placeButton = el('button', 'images-place');
       placeButton.type = 'button';
@@ -71,60 +90,39 @@
       placeButton.setAttribute('aria-label', t().openFolder);
       placeButton.append(icon('folder', null, 16), icon('chevron-down', null, 13));
       const crumbs = el('div', 'images-crumbs');
-      const sizeRange = el('input', 'images-size');
-      sizeRange.type = 'range';
-      sizeRange.min = '88';
-      sizeRange.max = '220';
-      sizeRange.value = String(state.tile);
-      sizeRange.title = t().thumbSize;
-      sizeRange.setAttribute('aria-label', t().thumbSize);
-      const viewButton = el('button', 'icon-button');
-      viewButton.type = 'button';
-      viewButton.title = t().viewSettings;
-      viewButton.setAttribute('aria-label', t().viewSettings);
-      viewButton.appendChild(icon('sliders'));
-      toolbar.append(placeButton, crumbs, el('span', 'images-spacer'), sizeRange, viewButton);
-
-      const body = el('div', 'images-body');
-      const gridColumn = el('div', 'images-grid-column');
+      toolbar.append(placeButton, crumbs);
+      const pickStrip = el('div', 'images-pick-strip');
+      pickStrip.hidden = true;
       const gridWrap = el('div', 'images-grid-wrap');
       gridWrap.tabIndex = 0;
       const grid = el('div', 'images-grid');
       gridWrap.appendChild(grid);
-      const pickBar = el('div', 'images-pick-bar');
-      pickBar.hidden = true;
-      gridColumn.append(gridWrap, pickBar);
+      const statusBar = el('div', 'images-status');
+      gridColumn.append(toolbar, pickStrip, gridWrap, statusBar);
       const splitter = el('div', 'images-splitter');
-      const preview = el('aside', 'images-preview');
-      preview.style.width = `${local.get('previewWidth', 380)}px`;
-      body.append(gridColumn, splitter, preview);
-      root.append(toolbar, body);
+      const pane = el('aside', 'images-preview');
+      pane.style.width = `${local.get('previewWidth', 380)}px`;
+      body.append(gridColumn, splitter, pane);
+      root.appendChild(body);
 
       // ------------------------------------------------ data
 
-      const images = () =>
-        state.scope === 'picks' ? state.picks : state.listing ? state.listing.images : [];
+      const items = () => (state.scope === 'picks' ? state.picks : state.listing ? state.listing.images : []);
       const subfolders = () => (state.scope === 'folder' && state.listing ? state.listing.folders : []);
-      const entries = () => [...subfolders().map((f) => folderKey(f.path)), ...images().map((i) => i.path)];
+      const entries = () => [...subfolders().map((f) => folderKey(f.path)), ...items().map((i) => i.path)];
       const isPicked = (file) => state.picks.some((p) => p.path === file);
       const baseName = (file) => file.split('/').filter(Boolean).pop() || file;
+      const itemOf = (key) => items().find((i) => i.path === key);
+      const folderOf = (key) => subfolders().find((f) => folderKey(f.path) === key);
 
       // The path is read from the home folder down when it lies inside it, as
       // Finder's path bar does, and from the disk otherwise.
       function trail(folder) {
         const home = state.home;
-        if (home && (folder === home || folder.startsWith(`${home}/`))) {
-          const parts = [{ name: s().folders.placeHome, path: home }];
-          let at = home;
-          for (const name of folder.slice(home.length).split('/').filter(Boolean)) {
-            at = `${at}/${name}`;
-            parts.push({ name, path: at });
-          }
-          return parts;
-        }
-        const parts = [{ name: s().folders.placeDisk, path: '/' }];
-        let at = '';
-        for (const name of folder.split('/').filter(Boolean)) {
+        const inHome = home && (folder === home || folder.startsWith(`${home}/`));
+        const parts = [inHome ? { name: s().folders.placeHome, path: home } : { name: s().folders.placeDisk, path: '/' }];
+        let at = inHome ? home : '';
+        for (const name of folder.slice(inHome ? home.length : 0).split('/').filter(Boolean)) {
           at = `${at}/${name}`;
           parts.push({ name, path: at });
         }
@@ -156,8 +154,12 @@
         state.picks = outcome.ok ? outcome.result.images : [];
       }
 
+      async function list(folder) {
+        return ctx.peek('images.list', { folder, sort: state.sort });
+      }
+
       async function openFolder(folder, focus) {
-        const outcome = await ctx.peek('images.list', { folder });
+        const outcome = await list(folder);
         if (!outcome.ok) {
           ctx.toast([outcome.error.message, outcome.error.hint].filter(Boolean).join(' '), 'error');
           return;
@@ -167,33 +169,56 @@
         state.listing = outcome.result;
         window.turink.rememberImagesFolder(state.folder);
         window.turink.watchImagesFolder(state.folder);
-        const list = entries();
-        state.selected = focus && list.includes(focus) ? focus : images()[0] ? images()[0].path : list[0] || null;
+        const all = entries();
+        state.selected = focus && all.includes(focus) ? focus : items()[0] ? items()[0].path : all[0] || null;
         renderAll();
         gridWrap.scrollTop = 0;
         scrollToSelected();
         gridWrap.focus();
+        countFolders();
       }
 
       async function refresh(folder) {
         if (folder !== state.folder) return;
-        const outcome = await ctx.peek('images.list', { folder });
+        const outcome = await list(folder);
         if (!outcome.ok) return;
         state.listing = outcome.result;
         if (!entries().includes(state.selected)) state.selected = entries()[0] || null;
         renderAll();
+        countFolders();
       }
 
       async function setScope(scope) {
         state.scope = scope;
         if (scope === 'picks') await loadPicks();
-        const list = entries();
-        if (!list.includes(state.selected)) state.selected = images()[0] ? images()[0].path : list[0] || null;
+        const all = entries();
+        if (!all.includes(state.selected)) state.selected = items()[0] ? items()[0].path : all[0] || null;
         renderAll();
         gridWrap.focus();
       }
 
-      // ------------------------------------------------ toolbar
+      // What each subfolder holds is counted after the folder is on screen,
+      // a few folders per call, so a folder of many subfolders opens at once
+      // and its tiles fill in. Moving to another folder abandons the rest.
+      let counting = 0;
+      async function countFolders() {
+        const run = ++counting;
+        const folder = state.folder;
+        const paths = subfolders().map((f) => f.path).filter((p) => !state.counts.has(p));
+        for (let i = 0; i < paths.length; i += 6) {
+          const outcome = await ctx.peek('images.count', { folders: paths.slice(i, i + 6) });
+          if (run !== counting || folder !== state.folder) return;
+          if (!outcome.ok) return;
+          for (const count of outcome.result.folders) {
+            if (count.error) continue;
+            state.counts.set(count.path, count);
+            updateFolderTile(count.path);
+            if (state.selected === folderKey(count.path)) renderPreview();
+          }
+        }
+      }
+
+      // ------------------------------------------------ path
 
       function renderToolbar() {
         crumbs.textContent = '';
@@ -204,7 +229,7 @@
           back.title = t().backToFolder;
           back.append(icon('chevron', 'images-back-icon', 14), el('span', null, state.folder ? baseName(state.folder) : ''));
           back.addEventListener('click', () => setScope('folder'));
-          crumbs.append(back, el('span', 'images-view-title', format(t().picksTitle, { count: images().length })));
+          crumbs.append(back, el('span', 'images-view-title', t().picksTitle));
           return;
         }
         if (!state.listing) return;
@@ -228,67 +253,243 @@
         });
       }
 
+      // ------------------------------------------------ selection strip
+
+      // The strip's buttons shrink to icons when the column is narrow, so each
+      // carries a tooltip that appears at once rather than after the system's
+      // delay.
+      function tip(node, text) {
+        node.dataset.tip = text;
+        node.setAttribute('aria-label', text);
+      }
+
+      function stripButton(iconName, label, tipText, onClick) {
+        const b = el('button', 'images-strip-button');
+        b.type = 'button';
+        tip(b, tipText);
+        b.append(icon(iconName, null, 14), el('span', 'images-strip-label', label));
+        b.addEventListener('click', onClick);
+        return b;
+      }
+
+      function renderPickStrip() {
+        pickStrip.textContent = '';
+        pickStrip.hidden = state.picks.length === 0;
+        if (pickStrip.hidden) return;
+        const clear = el('button', 'images-strip-clear');
+        clear.type = 'button';
+        tip(clear, t().clearSelection);
+        clear.appendChild(icon('close', null, 14));
+        clear.addEventListener('click', clearPicks);
+        const only = el('button', 'images-strip-only' + (state.scope === 'picks' ? ' on' : ''));
+        only.type = 'button';
+        tip(only, t().showPicked);
+        only.setAttribute('aria-pressed', String(state.scope === 'picks'));
+        only.append(icon('filter', null, 13), el('span', 'images-strip-label', t().showPicked));
+        only.addEventListener('click', () => setScope(state.scope === 'picks' ? 'folder' : 'picks'));
+        pickStrip.append(
+          clear,
+          el('span', 'images-strip-count', format(t().pickedCount, { count: state.picks.length })),
+          only,
+          el('span', 'images-spacer'),
+          stripButton('copy', t().copyShort, t().copyTip, () => transfer('copy')),
+          stripButton('move', t().moveShort, t().moveTip, () => transfer('move'))
+        );
+      }
+
+      // ------------------------------------------------ status bar
+
+      function renderStatus() {
+        statusBar.textContent = '';
+        const files = items();
+        const tally = { photo: 0, video: 0, pdf: 0 };
+        for (const f of files) tally[f.type] = (tally[f.type] || 0) + 1;
+        const parts = [];
+        if (state.scope === 'folder') parts.push(format(t().folderCount, { count: subfolders().length }));
+        if (tally.photo) parts.push(format(t().photoCount, { count: tally.photo }));
+        if (tally.video) parts.push(format(t().videoCount, { count: tally.video }));
+        if (tally.pdf) parts.push(format(t().pdfCount, { count: tally.pdf }));
+        statusBar.appendChild(el('span', 'images-status-count', parts.join(' · ')));
+
+        const sortButton = el('button', 'images-status-button');
+        sortButton.type = 'button';
+        tip(sortButton, t().sortBy);
+        sortButton.append(icon('sort', null, 14), el('span', 'images-status-label', sortLabel(state.sort)));
+        sortButton.addEventListener('click', (event) => {
+          event.stopPropagation();
+          menu(sortButton, (box) => {
+            box.appendChild(el('div', 'images-menu-head', t().sortBy));
+            for (const value of ['name', 'modified', 'kind']) {
+              box.appendChild(menuItem(sortLabel(value), () => setSort(value), { on: state.sort === value }));
+            }
+            box.appendChild(el('div', 'images-menu-tip', t().foldersFirst));
+          });
+        });
+
+        const size = el('label', 'images-status-size');
+        tip(size, t().thumbSize);
+        const range = el('input');
+        range.type = 'range';
+        range.min = '88';
+        range.max = '220';
+        range.value = String(state.tile);
+        range.setAttribute('aria-label', t().thumbSize);
+        range.addEventListener('input', () => setTile(Number(range.value)));
+        size.append(icon('image', 'small', 12), range, icon('image', null, 16));
+
+        const viewButton = el('button', 'images-status-button');
+        viewButton.type = 'button';
+        tip(viewButton, t().viewSettings);
+        viewButton.appendChild(icon('gear', null, 16));
+        viewButton.addEventListener('click', (event) => {
+          event.stopPropagation();
+          viewMenu(viewButton);
+        });
+
+        statusBar.append(sortButton, el('span', 'images-status-sep'), size, el('span', 'images-status-sep'), viewButton);
+      }
+
+      const sortLabel = (value) => ({ name: t().sortName, modified: t().sortModified, kind: t().sortKind })[value];
+
+      async function setSort(value) {
+        state.sort = value;
+        local.set('sort', value);
+        if (state.scope === 'folder' && state.folder) await refresh(state.folder);
+        else renderStatus();
+      }
+
       // ------------------------------------------------ grid
 
       // Thumbnails load as their tiles scroll into view, so a folder of
-      // thousands of photos opens at once.
+      // thousands of items opens at once.
       const seen = new IntersectionObserver(
         (records) => {
           for (const record of records) {
             if (!record.isIntersecting) continue;
-            const img = record.target;
-            img.src = thumbURL(img.dataset.file, state.tile);
-            seen.unobserve(img);
+            loadThumb(record.target);
+            seen.unobserve(record.target);
           }
         },
         { root: gridWrap, rootMargin: '300px' }
       );
 
-      function pickDot(size) {
-        const dot = el('span', 'images-pick-dot');
-        dot.appendChild(icon('check', null, size || 12));
-        return dot;
+      function loadThumb(img) {
+        const wanted = step(img.dataset.mosaic ? state.tile / 2 : state.tile);
+        img.dataset.step = String(wanted);
+        img.src = thumbURL(img.dataset.file, wanted / (window.devicePixelRatio || 1));
+      }
+
+      function thumbImg(file, mosaic) {
+        const img = el('img');
+        img.alt = '';
+        img.draggable = false;
+        img.dataset.file = file;
+        if (mosaic) img.dataset.mosaic = '1';
+        img.addEventListener('error', () => img.classList.add('missing'));
+        seen.observe(img);
+        return img;
+      }
+
+      // A folder shows up to four of the photos inside it, from its subfolders
+      // too, with a small folder mark so it still reads as a folder.
+      function folderThumb(folder) {
+        const count = state.counts.get(folder.path);
+        const previews = count ? count.previews.slice(0, 4) : [];
+        if (previews.length === 0) {
+          const thumb = el('div', 'images-thumb folder');
+          thumb.appendChild(icon('folder', null, 56));
+          return thumb;
+        }
+        const thumb = el('div', `images-thumb folder-mosaic n${previews.length}`);
+        for (const file of previews) thumb.appendChild(thumbImg(file, true));
+        const mark = el('span', 'images-folder-mark');
+        mark.appendChild(icon('folder', null, 12));
+        thumb.appendChild(mark);
+        return thumb;
+      }
+
+      function folderSub(folder) {
+        const count = state.counts.get(folder.path);
+        if (!count) return t().counting;
+        const line = countLine(count, t(), format);
+        if (line) return line.split(' · ')[0];
+        return count.folders ? format(t().folderCount, { count: count.folders }) : t().emptyFolderTile;
+      }
+
+      function folderTile(folder) {
+        const key = folderKey(folder.path);
+        const tile = el('div', 'images-tile' + (key === state.selected ? ' current' : ''));
+        tile.dataset.key = key;
+        tile.append(folderThumb(folder), el('div', 'images-tile-name', folder.name), el('div', 'images-tile-sub', folderSub(folder)));
+        tile.addEventListener('mousedown', () => select(key));
+        tile.addEventListener('dblclick', () => openFolder(folder.path));
+        return tile;
+      }
+
+      function updateFolderTile(path) {
+        const folder = subfolders().find((f) => f.path === path);
+        const old = folder && [...grid.children].find((tile) => tile.dataset.key === folderKey(path));
+        if (old) old.replaceWith(folderTile(folder));
+      }
+
+      function badge(item) {
+        if (item.type === 'pdf') return el('span', 'images-badge', 'PDF');
+        if (item.type !== 'video') return null;
+        const b = el('span', 'images-badge');
+        b.append(icon('play', null, 9));
+        // The length comes from Spotlight. A folder it does not index, such as
+        // a Google Drive one, is asked of the player instead, which reads only
+        // the part of the file that holds it.
+        window.turink.imageFacts(item.path).then((f) => {
+          if (f && f.duration) return b.appendChild(document.createTextNode(clock(f.duration)));
+          const probe = document.createElement('video');
+          probe.preload = 'metadata';
+          probe.muted = true;
+          probe.addEventListener('loadedmetadata', () => {
+            if (Number.isFinite(probe.duration)) b.appendChild(document.createTextNode(clock(probe.duration)));
+            probe.removeAttribute('src');
+            probe.load();
+          });
+          probe.src = window.TurinkImagesPreview.fileURL(item.path);
+        });
+        return b;
+      }
+
+      function fileTile(item) {
+        const tile = el('div', 'images-tile' + (item.path === state.selected ? ' current' : '') + (isPicked(item.path) ? ' picked' : ''));
+        tile.dataset.key = item.path;
+        const thumb = el('div', 'images-thumb' + (item.type === 'pdf' ? ' pdf' : ''));
+        thumb.appendChild(thumbImg(item.path));
+        const mark = badge(item);
+        if (mark) thumb.appendChild(mark);
+        // The circle shows on hover and stays once picked, as in Photos.
+        const pick = el('span', 'images-pick-dot');
+        pick.title = t().select;
+        pick.appendChild(icon('check', null, 12));
+        pick.addEventListener('mousedown', (event) => {
+          event.stopPropagation();
+          togglePick(item.path);
+        });
+        tile.append(thumb, pick, el('div', 'images-tile-name', item.name));
+        if (state.scope === 'picks') tile.append(el('div', 'images-tile-sub', baseName(item.folder)));
+        tile.addEventListener('mousedown', () => select(item.path));
+        tile.addEventListener('dblclick', () => openViewer(item.path));
+        return tile;
       }
 
       function renderGrid() {
         seen.disconnect();
         grid.textContent = '';
         grid.style.setProperty('--tile', `${state.tile}px`);
-        for (const folder of subfolders()) {
-          const key = folderKey(folder.path);
-          const tile = el('div', 'images-tile' + (key === state.selected ? ' current' : ''));
-          tile.dataset.key = key;
-          const thumb = el('div', 'images-thumb folder');
-          thumb.appendChild(icon('folder', null, 56));
-          tile.append(thumb, el('div', 'images-tile-name', folder.name), el('div', 'images-tile-sub', format(t().photoCount, { count: folder.images })));
-          tile.addEventListener('mousedown', () => select(key));
-          tile.addEventListener('dblclick', () => openFolder(folder.path));
-          grid.appendChild(tile);
-        }
-        for (const image of images()) {
-          const tile = el('div', 'images-tile' + (image.path === state.selected ? ' current' : ''));
-          tile.dataset.key = image.path;
-          const thumb = el('div', 'images-thumb');
-          const img = el('img');
-          img.alt = '';
-          img.draggable = false;
-          img.dataset.file = image.path;
-          img.addEventListener('error', () => img.classList.add('missing'));
-          seen.observe(img);
-          thumb.appendChild(img);
-          tile.append(thumb, el('div', 'images-tile-name', image.name));
-          if (state.scope === 'picks') tile.append(el('div', 'images-tile-sub', baseName(image.folder)));
-          if (isPicked(image.path)) tile.appendChild(pickDot());
-          tile.addEventListener('mousedown', () => select(image.path));
-          tile.addEventListener('dblclick', () => openViewer(image.path));
-          grid.appendChild(tile);
-        }
+        for (const folder of subfolders()) grid.appendChild(folderTile(folder));
+        for (const item of items()) grid.appendChild(fileTile(item));
         if (grid.children.length === 0) {
           grid.appendChild(el('div', 'images-empty', state.scope === 'picks' ? t().emptyPicks : t().emptyFolder));
         }
       }
 
       function select(key) {
+        if (state.selected === key) return;
         state.selected = key;
         for (const tile of grid.children) tile.classList.toggle('current', tile.dataset.key === key);
         renderPreview();
@@ -310,77 +511,23 @@
 
       // ------------------------------------------------ preview
 
-      function fact(list, label, value) {
-        list.append(el('dt', null, label), el('dd', null, value));
-      }
+      const preview = createPreview(pane, {
+        el,
+        icon,
+        t,
+        format,
+        formatBytes,
+        isPicked,
+        togglePick: (file) => togglePick(file),
+        openViewer: (file) => openViewer(file),
+        openFolder: (folder) => openFolder(folder),
+      });
 
       function renderPreview() {
-        preview.textContent = '';
-        const stage = el('div', 'images-preview-stage');
-        preview.appendChild(stage);
-        const info = el('div', 'images-preview-info');
-        const facts = el('dl', 'images-facts');
-        const actions = el('div', 'images-actions');
-
-        if (isFolderKey(state.selected)) {
-          const folder = subfolders().find((f) => folderKey(f.path) === state.selected);
-          if (!folder) return;
-          const big = icon('folder', 'images-preview-folder', 110);
-          stage.appendChild(big);
-          stage.addEventListener('dblclick', () => openFolder(folder.path));
-          info.appendChild(el('div', 'images-preview-name', folder.name));
-          fact(facts, t().photos, format(t().photoCount, { count: folder.images }));
-          const open = el('button', 'button primary');
-          open.type = 'button';
-          open.append(icon('folder', null, 15), el('span', null, t().openFolderButton), el('span', 'kbd', '↵'));
-          open.addEventListener('click', () => openFolder(folder.path));
-          actions.appendChild(open);
-          info.append(facts, actions);
-          preview.appendChild(info);
-          return;
-        }
-
-        const image = images().find((i) => i.path === state.selected);
-        if (!image) {
-          stage.appendChild(el('div', 'images-empty', t().previewEmpty));
-          return;
-        }
-        const img = el('img');
-        img.alt = '';
-        img.draggable = false;
-        img.src = thumbURL(image.path, 512);
-        const full = new Image();
-        full.onload = () => {
-          if (state.selected !== image.path) return;
-          img.src = full.src;
-          dims.textContent = `${full.naturalWidth} × ${full.naturalHeight}`;
-        };
-        full.src = imageURL(image.path);
-        img.addEventListener('dblclick', () => openViewer(image.path));
-        stage.appendChild(img);
-
-        info.appendChild(el('div', 'images-preview-name', image.name));
-        const dims = el('span', null, '…');
-        facts.append(el('dt', null, t().dimensions), el('dd', null));
-        facts.lastChild.appendChild(dims);
-        if (image.bytes !== undefined) fact(facts, t().fileSize, formatBytes(image.bytes));
-        if (image.modified) fact(facts, t().modified, new Date(image.modified).toLocaleString());
-        fact(facts, t().location, image.folder || state.folder);
-
-        const picked = isPicked(image.path);
-        const pick = el('button', 'button' + (picked ? ' on' : ''));
-        pick.type = 'button';
-        pick.setAttribute('aria-pressed', String(picked));
-        if (picked) pick.title = t().selectedHint;
-        pick.append(icon(picked ? 'check' : 'pick', null, 15), el('span', null, picked ? t().selected : t().select), el('span', 'kbd', 'P'));
-        pick.addEventListener('click', () => togglePick(image.path));
-        const open = el('button', 'button primary');
-        open.type = 'button';
-        open.append(icon('external', null, 15), el('span', null, t().openViewer), el('span', 'kbd', '↵'));
-        open.addEventListener('click', () => openViewer(image.path));
-        actions.append(pick, open);
-        info.append(facts, actions);
-        preview.appendChild(info);
+        const folder = isFolderKey(state.selected) ? folderOf(state.selected) : null;
+        if (folder) return preview.show({ folder }, state.counts.get(folder.path));
+        const file = itemOf(state.selected);
+        preview.show(file ? { file } : null);
       }
 
       // ------------------------------------------------ selection
@@ -395,38 +542,18 @@
         }
         await loadPicks();
         if (state.scope === 'picks' && off) {
-          const list = images();
-          if (!list.some((i) => i.path === state.selected)) state.selected = list[0] ? list[0].path : null;
+          const left = items();
+          if (!left.some((i) => i.path === state.selected)) state.selected = left[0] ? left[0].path : null;
+          if (left.length === 0) return setScope('folder');
+          return renderAll();
         }
-        renderAll();
-      }
-
-      function renderPickBar() {
-        pickBar.textContent = '';
-        const count = state.picks.length;
-        pickBar.hidden = count === 0;
-        if (pickBar.hidden) return;
-        const label = el('span', 'images-pick-label');
-        label.append(t().pickBar, ' ', el('strong', null, format(t().pickCount, { count })));
-        pickBar.appendChild(label);
-        if (state.scope !== 'picks') {
-          const gather = el('button', 'text-button', t().gather);
-          gather.type = 'button';
-          gather.addEventListener('click', () => setScope('picks'));
-          pickBar.appendChild(gather);
-        }
-        const copy = el('button', 'button small');
-        copy.type = 'button';
-        copy.append(icon('copy', null, 14), el('span', null, t().copy));
-        copy.addEventListener('click', () => transfer('copy'));
-        const move = el('button', 'button small');
-        move.type = 'button';
-        move.append(icon('folder', null, 14), el('span', null, t().move));
-        move.addEventListener('click', () => transfer('move'));
-        const clear = el('button', 'text-button', t().clearSelection);
-        clear.type = 'button';
-        clear.addEventListener('click', clearPicks);
-        pickBar.append(copy, move, clear);
+        // Only what the pick changes is redrawn, so thumbnails and a playing
+        // video are left alone.
+        const tile = [...grid.children].find((node) => node.dataset.key === file);
+        if (tile) tile.classList.toggle('picked', isPicked(file));
+        const item = itemOf(file);
+        if (item) preview.refreshPick(item);
+        renderPickStrip();
       }
 
       async function clearPicks() {
@@ -449,9 +576,19 @@
 
       const recentTargets = () => local.get('recentTargets', []).filter(Boolean).slice(0, 4);
 
+      // With folders used before, the sheet offers them and another folder;
+      // without any, it only explains and goes straight to choosing one.
       async function chooseTarget(kind) {
         const count = state.picks.length;
         const recent = recentTargets();
+        const title = format(kind === 'copy' ? t().copyTitle : t().moveTitle, { count });
+        const message = kind === 'copy' ? t().copyNote : t().moveNote;
+        if (recent.length === 0) {
+          const accepted = await ctx.sheet.open({ title, message, accept: t().chooseFolder });
+          if (!accepted) return null;
+          const chosen = await window.turink.pickPaths(true);
+          return chosen && chosen[0] ? chosen[0] : null;
+        }
         const choice = el('div', 'images-targets');
         let picked = recent[0] || null;
         const options = [];
@@ -467,17 +604,13 @@
           options.push(radio);
           return row;
         };
-        if (recent.length > 0) {
-          choice.appendChild(el('div', 'images-targets-head', t().recentTargets));
-          for (const target of recent) choice.appendChild(option(target, target.split('/').pop(), target));
-        }
-        choice.appendChild(option('', t().otherFolder));
-        if (!picked && options.length) options[options.length - 1].checked = true;
-        choice.appendChild(el('p', 'images-target-note', kind === 'copy' ? t().copyNote : t().moveNote));
+        choice.appendChild(el('div', 'images-targets-head', t().recentTargets));
+        for (const target of recent) choice.appendChild(option(target, target.split('/').pop(), target));
+        choice.appendChild(option('', t().otherTarget));
 
         const accepted = await ctx.sheet.open({
-          title: format(kind === 'copy' ? t().copyTitle : t().moveTitle, { count }),
-          message: '',
+          title,
+          message,
           body: choice,
           accept: kind === 'copy' ? t().copyAction : t().moveAction,
         });
@@ -497,6 +630,7 @@
         const outcome = await ctx.run(`images.${kind}`, { paths, to }, { quiet: true });
         if (!outcome.ok) return;
         if (kind === 'copy') {
+          // Copied items stay selected in case they go somewhere else too.
           const copied = outcome.result.copied.length;
           ctx.toast(format(t().copied, { count: copied, name }), 'done', {
             label: t().clearSelection,
@@ -510,7 +644,7 @@
           return;
         }
         const moved = outcome.result.moved;
-        // Moved photos have done their job, so their selection is cleared.
+        // Moved items have done their job, so their selection is cleared.
         await selectCall({ paths: moved.map((m) => m.to), off: true });
         await loadPicks();
         if (state.scope === 'picks' && state.picks.length === 0) await setScope('folder');
@@ -541,7 +675,7 @@
 
       async function trash(file) {
         if (!file || isFolderKey(file)) return;
-        const list = images();
+        const list = items();
         const index = list.findIndex((i) => i.path === file);
         const name = file.split('/').pop();
         // The keystroke is the confirmation, as it is for ⌘⌫ in Finder; the
@@ -550,7 +684,7 @@
         if (!outcome.ok) return;
         await loadPicks();
         if (state.scope === 'folder') await refresh(state.folder);
-        const rest = images();
+        const rest = items();
         state.selected = rest[Math.min(index, rest.length - 1)] ? rest[Math.min(index, rest.length - 1)].path : null;
         renderAll();
         ctx.toast(format(t().trashed, { name }), 'done', {
@@ -569,20 +703,23 @@
 
       function openViewer(file) {
         if (!file || isFolderKey(file)) return;
-        window.turink.openViewer(file, images().map((i) => i.path));
+        preview.stop();
+        window.turink.openViewer(file, items().map((i) => i.path));
       }
 
-      // The viewer may have selected photos or moved some to the Trash, so the
-      // list is read again before the last photo seen is highlighted.
+      // The viewer may have selected items or moved some to the Trash, so the
+      // list is read again before the last item seen is highlighted.
       async function focusFile(file) {
         await loadPicks();
         if (state.scope === 'folder' && state.folder) await refresh(state.folder);
         else renderAll();
-        if (file && images().some((i) => i.path === file)) select(file);
+        if (file && items().some((i) => i.path === file)) select(file);
       }
 
       // ------------------------------------------------ menus
 
+      // Menus open below a control in the path bar and above one in the
+      // status bar, so they never leave the window.
       function menu(anchor, build) {
         closeMenu();
         const box = el('div', 'images-menu');
@@ -593,7 +730,8 @@
         root.appendChild(box);
         const left = Math.min(a.left - host.left, host.width - box.offsetWidth - 8);
         box.style.left = `${Math.max(8, left)}px`;
-        box.style.top = `${a.bottom - host.top + 6}px`;
+        const below = a.bottom - host.top + 6;
+        box.style.top = below + box.offsetHeight > host.height ? `${a.top - host.top - box.offsetHeight - 6}px` : `${below}px`;
       }
       function closeMenu() {
         for (const m of root.querySelectorAll('[data-menu]')) m.remove();
@@ -630,10 +768,9 @@
         });
       });
 
-      viewButton.addEventListener('click', (event) => {
-        event.stopPropagation();
+      function viewMenu(anchor) {
         const set = (view) => window.turink.setImagesView(view).then(setView);
-        menu(viewButton, (box) => {
+        menu(anchor, (box) => {
           box.appendChild(el('div', 'images-menu-head', t().wheel));
           box.appendChild(menuItem(t().wheelNav, () => set({ wheel: 'nav' }), { on: state.view.wheel === 'nav' }));
           box.appendChild(menuItem(t().wheelZoom, () => set({ wheel: 'zoom' }), { on: state.view.wheel === 'zoom' }));
@@ -648,9 +785,10 @@
             item.title = hint;
             box.appendChild(item);
           }
-          box.appendChild(el('div', 'images-menu-tip', { first: t().sizeFirstHint, each: t().sizeEachHint, remember: t().sizeRememberHint }[state.view.windowSize]));
+          box.appendChild(el('div', 'images-menu-sep'));
+          box.appendChild(menuItem(t().defaultApp, defaultAppSheet));
         });
-      });
+      }
 
       const outside = (event) => {
         if (!event.target.closest('[data-menu]')) closeMenu();
@@ -661,15 +799,48 @@
         state.view = view;
       }
 
+      // ------------------------------------------------ default app
+
+      // macOS asks once per file type before another app becomes the default,
+      // so the sheet says so, and offers Finder's own way, which asks nothing.
+      async function defaultAppSheet() {
+        const app = state.appId ? { app: state.appId } : {};
+        const status = await ctx.peek('images.default-app', app);
+        const allOurs = status.ok && status.result.allOurs;
+        const box = el('div', 'images-default');
+        box.appendChild(el('p', null, allOurs ? t().defaultAlready : t().defaultIntro));
+        if (!allOurs) {
+          const now = el('div', 'images-default-option');
+          now.append(el('strong', null, t().defaultNow), el('span', null, t().defaultNowBody));
+          const finder = el('div', 'images-default-option');
+          const steps = el('ol');
+          for (const line of [t().defaultStep1, t().defaultStep2, t().defaultStep3]) steps.appendChild(el('li', null, line));
+          finder.append(el('strong', null, t().defaultFinder), steps);
+          box.append(now, finder);
+        }
+        const accepted = await ctx.sheet.open({
+          title: t().defaultTitle,
+          message: '',
+          body: box,
+          accept: allOurs ? t().defaultRestore : t().defaultNow,
+        });
+        if (!accepted) return;
+        const outcome = await ctx.run('images.set-default-app', allOurs ? { ...app, restore: true } : app, { quiet: true });
+        if (!outcome.ok) return;
+        const r = outcome.result;
+        if (allOurs) ctx.toast(t().defaultRestored, 'done');
+        else ctx.toast(format(r.applied === r.results.length ? t().defaultDone : t().defaultPartly, { applied: r.applied, total: r.results.length }), r.applied ? 'done' : 'error');
+      }
+
       // ------------------------------------------------ keys and gestures
 
       gridWrap.addEventListener('keydown', (e) => {
-        const list = entries();
-        const i = list.indexOf(state.selected);
+        const all = entries();
+        const i = all.indexOf(state.selected);
         const cols = gridColumns();
         const move = (delta) => {
-          const pos = Math.max(0, Math.min(list.length - 1, (i < 0 ? 0 : i) + delta));
-          if (list[pos]) select(list[pos]);
+          const pos = Math.max(0, Math.min(all.length - 1, (i < 0 ? 0 : i) + delta));
+          if (all[pos]) select(all[pos]);
         };
         const k = e.key;
         const openEntry = () => {
@@ -704,26 +875,33 @@
         },
         { passive: false }
       );
-      sizeRange.addEventListener('input', () => setTile(Number(sizeRange.value)));
 
       let tileTimer = null;
       function setTile(value) {
         state.tile = Math.round(Math.max(88, Math.min(220, value)));
-        sizeRange.value = String(state.tile);
+        const range = statusBar.querySelector('input[type="range"]');
+        if (range) range.value = String(state.tile);
         grid.style.setProperty('--tile', `${state.tile}px`);
         clearTimeout(tileTimer);
-        tileTimer = setTimeout(() => local.set('tile', state.tile), 300);
+        tileTimer = setTimeout(() => {
+          local.set('tile', state.tile);
+          // Thumbnails already shown are asked again only when the tile has
+          // outgrown them, so dragging the slider does not reload the grid.
+          for (const img of grid.querySelectorAll('img[data-step]')) {
+            if (step(img.dataset.mosaic ? state.tile / 2 : state.tile) > Number(img.dataset.step)) loadThumb(img);
+          }
+        }, 300);
       }
 
       splitter.addEventListener('mousedown', (e) => {
         e.preventDefault();
         const startX = e.clientX;
-        const startW = preview.getBoundingClientRect().width;
+        const startW = pane.getBoundingClientRect().width;
         const moveTo = (m) => {
-          preview.style.width = `${Math.max(260, Math.min(body.clientWidth * 0.7, startW - (m.clientX - startX)))}px`;
+          pane.style.width = `${Math.max(260, Math.min(body.clientWidth * 0.7, startW - (m.clientX - startX)))}px`;
         };
         const up = () => {
-          local.set('previewWidth', Math.round(preview.getBoundingClientRect().width));
+          local.set('previewWidth', Math.round(pane.getBoundingClientRect().width));
           document.removeEventListener('mousemove', moveTo);
           document.removeEventListener('mouseup', up);
         };
@@ -735,15 +913,18 @@
 
       function renderAll() {
         renderToolbar();
+        renderPickStrip();
         renderGrid();
+        renderStatus();
         renderPreview();
-        renderPickBar();
       }
 
       active = { openFolder, refresh, focusFile, setView };
       this.unmount = () => {
         active = null;
+        counting++;
         seen.disconnect();
+        preview.stop();
         document.removeEventListener('mousedown', outside);
         window.turink.watchImagesFolder(null);
       };
@@ -753,6 +934,7 @@
         await loadPicks();
         const initial = await window.turink.imagesInitial();
         state.home = initial.home;
+        state.appId = initial.appId;
         await openFolder(initial.folder);
       })();
     },
