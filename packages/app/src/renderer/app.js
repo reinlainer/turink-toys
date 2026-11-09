@@ -319,10 +319,14 @@
       if (present) for (const id of screen.tasks || []) owned.add(id);
       return present && screen.id !== 'other';
     });
-    const rest = tasks.filter((task) => !owned.has(task.id));
-    if (rest.length > 0) {
-      const other = window.TurinkScreens.find((screen) => screen.id === 'other');
-      screens.push({ ...other, tasks: rest.map((task) => task.id) });
+    // The last screen holds the small tools' cards and, below them, a
+    // generated form for every task no screen claims. It shows when either
+    // has something in it.
+    const other = window.TurinkScreens.find((screen) => screen.id === 'other');
+    const own = (other.tasks || []).filter((id) => owned.has(id));
+    const rest = tasks.filter((task) => !owned.has(task.id)).map((task) => task.id);
+    if (own.length + rest.length > 0) {
+      screens.push({ ...other, tasks: [...own, ...rest], generated: rest });
     }
   }
 

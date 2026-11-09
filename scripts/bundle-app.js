@@ -173,6 +173,11 @@ function main() {
     })
   );
 
+  // The native helpers are compiled fresh into packages/core/native/build so
+  // the bundle never carries a stale or missing copy; copyRuntime takes them
+  // along with the rest of the core.
+  execFileSync(process.execPath, [path.join(__dirname, 'build-helpers.js')], { stdio: 'inherit' });
+
   copyRuntime(BUNDLE);
 
   // Rewriting the bundle invalidates Electron's signature, and an arm64 binary

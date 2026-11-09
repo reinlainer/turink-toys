@@ -30,6 +30,8 @@ require('./tasks/images/copy');
 require('./tasks/images/move');
 require('./tasks/images/trash');
 require('./tasks/images/restore');
+require('./tasks/mouse/status');
+require('./tasks/mouse/reverse');
 
 module.exports = {
   registry: require('./kernel/registry'),

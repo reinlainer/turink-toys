@@ -501,6 +501,7 @@ ipcMain.handle('shell:external', (event, url) => {
 // display sleep timer lives under Lock Screen.
 const SETTINGS_PANES = {
   display: 'x-apple.systempreferences:com.apple.Lock-Screen-Settings.extension',
+  accessibility: 'x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility',
 };
 
 ipcMain.handle('shell:settings', (event, pane) => {

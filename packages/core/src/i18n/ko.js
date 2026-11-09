@@ -350,7 +350,14 @@ module.exports = {
     },
 
     other: {
-      subtitle: '전용 화면이 아직 제공되지 않는 기능입니다.',
+      subtitle: '작은 기능을 모아 둔 화면입니다.',
+      wheelTitle: '마우스 휠 반전',
+      wheelPoints: '트랙패드는 현재 방향 유지\n자체 앱에서 이미 반전한 마우스는 두 번 반전되므로 한쪽만 사용',
+      wheelActive: '사용 중',
+      wheelStarting: '시작 중…',
+      wheelNeedsPermission: '손쉬운 사용에서 Turink-Toys Scroll Reverser를 켜십시오. 이미 켜져 있으면 목록에서 제거한 후 이 스위치를 껐다가 다시 켜십시오.',
+      wheelOpenSettings: '손쉬운 사용 설정 열기',
+      wheelStopped: '스크롤 도우미가 실행되지 않고 있습니다. 스위치를 껐다가 다시 켜십시오.',
     },
   },
 
@@ -442,6 +449,17 @@ module.exports = {
     until: '해제 예정 시각',
     keepAwakeNote: '디스플레이를 닫으면 잠자기 상태로 전환됩니다. 디스플레이를 닫은 상태에서도 잠자기 상태로 전환되지 않게 하려면 power.lid(디스플레이를 닫은 상태에서 잠자기 방지)를 사용하십시오.',
     lidWarning: '디스플레이를 닫아도 잠자기 상태로 전환되지 않습니다. 자동 복원되기 전에는 Mac을 가방 등 통풍이 되지 않는 곳에 넣지 마십시오.',
+    wheelDirection: '마우스 휠',
+    wheelReversed: '반전',
+    wheelSystem: '시스템 설정 따름',
+    scrollHelper: '스크롤 도우미',
+    helperActive: '동작 중',
+    helperNeedsPermission: '손쉬운 사용 권한 필요',
+    helperStarting: '시작 중',
+    helperStopped: '실행되지 않음',
+    helperOff: '꺼짐',
+    wheelPermissionNote: '시스템 설정 > 개인정보 보호 및 보안 > 손쉬운 사용에서 Turink-Toys Scroll Reverser를 켜십시오. 이미 켜져 있으면 목록에서 제거한 후 휠 반전을 다시 켜십시오.',
+    wheelStoppedNote: '스크롤 도우미가 등록되어 있지만 실행되지 않고 있습니다. 휠 반전을 껐다가 다시 켜십시오.',
   },
 
   // Displayed when a run stops at a gate. The English message stays in the
@@ -508,6 +526,10 @@ module.exports = {
     APP_RUNNING: {
       message: '실행 중인 앱은 삭제할 수 없습니다.',
       hint: '앱을 종료한 후 다시 시도하십시오.',
+    },
+    HELPER_MISSING: {
+      message: '이 빌드에는 스크롤 도우미가 포함되어 있지 않습니다.',
+      hint: '소스에서 실행 중이면 npm run helpers를 실행한 후 다시 시도하십시오.',
     },
     UNKNOWN_TARGET: {
       message: '알 수 없는 대상입니다.',
@@ -795,6 +817,24 @@ module.exports = {
         '휴지통으로 이동한 사진을 원래 위치로 되돌릴 때 사용합니다. 해당 삭제 작업의 실행 번호가 필요합니다. 원래 이름을 이미 다른 파일이 사용하고 있으면 덮어쓰지 않고 그 사실을 보고합니다.',
       input: {
         run: { label: '실행 번호', description: '되돌릴 사진 삭제 작업의 실행 번호입니다.' },
+      },
+    },
+
+    'mouse.status': {
+      title: '마우스 휠 상태',
+      summary: '마우스 휠 방향의 반전 여부 확인',
+      whenToUse:
+        '휠 반전이 켜져 있는지, 스크롤 도우미가 동작 중인지 또는 손쉬운 사용 권한을 기다리는지 확인할 때 사용합니다. 상태만 읽습니다.',
+      input: {},
+    },
+
+    'mouse.reverse': {
+      title: '마우스 휠 반전',
+      summary: '트랙패드는 그대로 두고 마우스 휠의 스크롤 방향만 반전',
+      whenToUse:
+        '시스템의 자연스러운 스크롤 설정은 트랙패드와 마우스에 함께 적용되므로, 마우스 휠만 반대 방향으로 쓰고 싶을 때 사용합니다. 휠이 한 칸씩 움직이는 모든 마우스에 적용되며 트랙패드와 Magic Mouse는 바뀌지 않습니다. 자체 앱에서 이미 반전한 마우스는 두 번 반전되므로 한쪽을 끄십시오. 처음 켤 때 시스템 설정에서 손쉬운 사용 권한을 허용해야 합니다.',
+      input: {
+        off: { label: '끄기', description: '휠 반전을 끄고 시스템 설정의 방향으로 되돌립니다.' },
       },
     },
 

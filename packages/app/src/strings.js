@@ -310,6 +310,13 @@ module.exports = {
   },
 
   other: {
-    subtitle: 'Tools that do not have a screen of their own yet.',
+    subtitle: 'Small tools gathered in one place.',
+    wheelTitle: 'Reverse mouse wheel',
+    wheelPoints: 'The trackpad keeps its current direction\nA mouse already reversed in its own app is reversed twice, so turn one of them off',
+    wheelActive: 'On',
+    wheelStarting: 'Starting…',
+    wheelNeedsPermission: 'Turn on Turink-Toys Scroll Reverser in Accessibility. If it is already on, remove it from the list and turn this switch off and on again.',
+    wheelOpenSettings: 'Open Accessibility settings',
+    wheelStopped: 'The helper is not running. Turn the switch off and on again.',
   },
 };

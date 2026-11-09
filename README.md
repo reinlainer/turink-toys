@@ -58,6 +58,8 @@ application in place.
 | `images.move` | Move photos into another folder |
 | `images.trash` | Move photos to the Trash |
 | `images.restore` | Return photos that a previous images.trash moved to the Trash |
+| `mouse.status` | Report whether the mouse wheel direction is reversed |
+| `mouse.reverse` | Reverse the scroll direction of mouse wheels and leave the trackpad as it is |
 
 ### The archive problem
 
@@ -232,11 +234,12 @@ The window has one screen per area rather than one per task:
 | Applications | `apps.list` with icons and search, `apps.uninstall` on the selection, and `apps.restore` from the list of recent removals |
 | Power | `power.status` as a summary, with `power.keep-awake` and `power.lid` as two settings. The lid setting runs under the macOS administrator prompt |
 | Images | `images.list` as subfolders and thumbnails beside a large preview, `images.select` and `images.selected` for the photos gathered across folders, `images.copy` and `images.move` to send them on, `images.trash` and `images.restore` behind ⌘⌫ and Undo |
+| More | Small tools as cards, currently `mouse.status` and `mouse.reverse` as one switch. A tool moves to a screen of its own once it grows |
 
 The tasks themselves stay separate, because that is the contract the command
-line and agents call. A task no screen covers yet appears under More with a form
-generated from its manifest, so a new task is reachable from the window before
-anyone designs a screen for it. Each action has a button that copies the same
+line and agents call. A task no screen covers yet also appears under More, below
+the cards, with a form generated from its manifest, so a new task is reachable
+from the window before anyone designs a screen for it. Each action has a button that copies the same
 work as a terminal command, to paste into a script or hand to an agent.
 
 A menu bar item opens the Applications and Power screens, saved folders, and the
@@ -286,6 +289,27 @@ turink-toys disk.clean --targets android.sdk --lang ko --json
 Adding a language means one file under `packages/core/src/i18n/`. English lives
 in the task manifests themselves, so an untranslated string falls back to real
 text rather than to a key.
+
+## Mouse wheel reversal
+
+macOS applies natural scrolling to the trackpad and to every mouse at once.
+`mouse.reverse` flips only scroll events that arrive in notches, which is how a
+wheel reports, and passes continuous ones from the trackpad and Magic Mouse
+through untouched. Every wheel mouse is reversed alike; one already reversed by
+its own software, such as Logi Options+, is reversed twice, so turn one of the
+two off.
+
+The work is done by Turink-Toys Scroll Reverser, a small background
+application in `~/Library/Application Support/turink-toys/helpers/` that runs
+as the launch agent `toys.turink.app.scroll-reverser`. It needs the
+Accessibility permission, granted once under System Settings > Privacy &
+Security > Accessibility. The permission belongs to that helper, so it is
+installed outside the application bundle and replaced only when the helper
+itself changes; upgrading Turink Toys keeps it. After a release that does
+replace the helper, macOS asks again.
+
+Turning reversal off removes the launch agent. A plain `brew uninstall` leaves
+it running, so turn reversal off first or uninstall with `--zap`.
 
 ## Releasing
 
@@ -372,6 +396,14 @@ npm test
 | `packages/app` | Electron main process and renderer |
 | `packages/core/src/i18n` | Interface translations |
 | `packages/app/assets` | Icon sources |
+
+The scroll helper is written in Swift and compiled with the Command Line Tools,
+without an Xcode project. `npm run bundle` builds it; running from source needs
+it built once:
+
+```bash
+npm run helpers
+```
 
 Icons are drawn as SVG and rasterised by Electron, which is already a
 dependency, so no image toolchain is required:

@@ -29,5 +29,8 @@ cask "turink-toys" do
         must_succeed: false
   end
 
-  zap trash: "~/Library/Application Support/turink-toys"
+  # The wheel reverser's launch agent is withdrawn only on zap. An uninstall
+  # directive would also run on every upgrade and silently turn reversal off.
+  zap launchctl: "toys.turink.app.scroll-reverser",
+      trash:     "~/Library/Application Support/turink-toys"
 end
