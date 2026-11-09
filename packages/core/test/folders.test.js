@@ -112,9 +112,11 @@ test('a well-known place saved itself is located by what contains it', () => {
   assert.strictEqual(item.name, 'Downloads');
   assert.strictEqual(item.source, 'home');
   assert.deepStrictEqual(item.parents, []);
+  assert.deepStrictEqual(item.trail, ['Downloads']);
 
   const [disk] = store.describe([{ path: '/Volumes/Photos' }], h);
   assert.strictEqual(disk.source, 'volume');
+  assert.deepStrictEqual(disk.trail, []);
   assert.strictEqual(disk.available, fs.existsSync('/Volumes/Photos'));
 });
 
@@ -131,9 +133,18 @@ test('entries sharing a name say what tells them apart', () => {
   assert.deepStrictEqual(samePlace.map((item) => item.clash), ['parent', 'parent']);
   assert.deepStrictEqual(samePlace.map((item) => item.parents), [['ref'], ['old']]);
 
-  // A custom name counts, in any letter case.
+  // A name the person chose is never marked, and leaves the folder it matches
+  // unmarked too.
   const renamed = store.describe([{ path: path.join(h, 'Desktop/solo'), name: 'DOCS' }, ...list.slice(0, 1)], h);
-  assert.deepStrictEqual(renamed.map((item) => item.clash), ['place', 'place']);
+  assert.deepStrictEqual(renamed.map((item) => item.clash), [null, null]);
+});
+
+test('the trail runs from the place down to the folder itself', () => {
+  const h = home(['Desktop/project/turink']);
+  const [item] = store.describe([{ path: path.join(h, 'Desktop/project/turink'), name: 'work' }], h);
+  assert.deepStrictEqual(item.trail, ['project', 'turink']);
+  assert.deepStrictEqual(item.parents, ['project']);
+  assert.strictEqual(item.name, 'work');
 });
 
 test('a folder that has gone is still listed, marked unavailable', () => {

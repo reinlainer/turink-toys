@@ -72,7 +72,10 @@
       }
 
       // The full path is in each row's tooltip.
-      const whereLine = (folder) => window.TurinkFolderNames.whereLine(folder, placeNames());
+      const whereText = (folder, keep) => {
+        const line = window.TurinkFolderNames.whereLine(folder, placeNames(), keep);
+        return folder.available ? line : `${line} · ${t().notConnected}`;
+      };
       const shownName = (folder) => window.TurinkFolderNames.shownName(folder, placeNames());
 
       const membersOf = (group) => state.folders.filter((folder) => (folder.group || null) === group);
@@ -346,7 +349,9 @@
         } else {
           text.appendChild(el('span', 'folder-name', shownName(folder)));
         }
-        text.appendChild(el('span', 'folder-where', folder.available ? whereLine(folder) : `${whereLine(folder)} · ${t().notConnected}`));
+        const where = el('span', 'folder-where');
+        where.folder = folder;
+        text.appendChild(where);
         node.appendChild(text);
 
         const actions = el('div', 'folder-actions');
@@ -506,6 +511,25 @@
         return card;
       }
 
+      // A location line shows every folder when it fits. When it does not,
+      // the folders just below the place give way to "…" one at a time, so
+      // the saved folder and its nearest parents stay readable.
+      function fitWhere(node) {
+        const { folder } = node;
+        let keep = folder.trail.length;
+        node.textContent = whereText(folder, keep);
+        while (keep > 1 && node.scrollWidth > node.clientWidth) {
+          keep -= 1;
+          node.textContent = whereText(folder, keep);
+        }
+      }
+
+      function fitAll() {
+        for (const node of body.querySelectorAll('.folder-where')) fitWhere(node);
+      }
+
+      new ResizeObserver(fitAll).observe(body);
+
       function render() {
         body.textContent = '';
         if (!state.loaded) return;
@@ -523,6 +547,7 @@
         const hint = el('div', 'folders-hint');
         hint.append(icon('drop', null, 14), el('span', null, t().dropHint));
         body.appendChild(hint);
+        fitAll();
       }
 
       // The list can change from the menu bar or the command line while this

@@ -721,6 +721,23 @@ input.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2
 
 .folder-actions { display: flex; gap: 4px; flex: none; opacity: 0; transition: opacity 0.1s; }
 .folder-row:hover .folder-actions, .folder-row:focus-within .folder-actions { opacity: 1; }
+/* A row's buttons float over the end of its text instead of keeping a space
+   of their own, so the location line has the whole row while they are hidden.
+   The fade is the row's hover colour laid over the card, so it matches. */
+.folder-row .folder-actions {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  align-items: center;
+  padding: 0 10px 0 28px;
+  border-radius: 0 8px 8px 0;
+  background:
+    linear-gradient(to right, transparent, var(--hover) 24px),
+    linear-gradient(to right, transparent, var(--surface) 24px);
+  pointer-events: none;
+}
+.folder-row:hover .folder-actions, .folder-row:focus-within .folder-actions { pointer-events: auto; }
 .folder-action {
   width: 28px;
   height: 28px;

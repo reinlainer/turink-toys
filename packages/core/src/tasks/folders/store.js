@@ -256,21 +256,24 @@ function locate(target, home = os.homedir()) {
 }
 
 // The list as every front end shows it. When two entries would show the same
-// name, each says what tells it apart: the place when the places differ,
-// otherwise the folder that contains it.
+// folder name, each says what tells it apart: the place when the places
+// differ, otherwise the folder that contains it.
 function describe(list, home = os.homedir()) {
   const items = list.map((entry) => {
     let where = locate(entry.path, home);
-    // The folders between the place and this one, without the folder itself.
-    let parents = where.parts.slice(0, -1);
+    const folderName = path.basename(entry.path) || entry.path;
+    // The folders from the place down to this one, the folder itself last, so
+    // the real folder stays visible when the entry is shown under another name.
+    let trail = where.parts;
     // A saved folder that is itself a well-known place, such as Downloads, is
     // located by what contains it, so it does not read as "Downloads in
     // Downloads". A disk is the place a person thinks of, so it stays as is.
     if (where.parts.length === 0 && where.source !== 'volume' && where.source !== 'disk') {
       where = locate(path.dirname(entry.path), home);
-      parents = where.parts;
+      trail = [...where.parts, folderName];
     }
-    const folderName = path.basename(entry.path) || entry.path;
+    // The folders between the place and this one, without the folder itself.
+    const parents = trail.slice(0, -1);
     return {
       path: entry.path,
       name: entry.name || folderName,
@@ -279,14 +282,18 @@ function describe(list, home = os.homedir()) {
       source: where.source,
       place: where.place,
       parents,
+      trail,
       group: entry.group || null,
       available: isDirectory(entry.path),
       clash: null,
     };
   });
 
+  // A name the person chose is theirs to keep as it is; only folders shown
+  // under their own name are told apart.
   const groups = new Map();
   for (const item of items) {
+    if (item.customName) continue;
     const key = item.name.toLocaleLowerCase();
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(item);

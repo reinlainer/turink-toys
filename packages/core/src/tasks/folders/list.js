@@ -23,7 +23,7 @@ register(
         folders: {
           type: 'array',
           description:
-            'Saved folders in the person\'s order. Each has path, name, customName, folderName, group (null when ungrouped), source (desktop, documents, downloads, home, icloud, onedrive, gdrive, dropbox, cloud, volume, disk), place, parents, available and clash (null, place or parent: what tells two entries with the same name apart).',
+            'Saved folders in the person\'s order. Each has path, name, customName, folderName, group (null when ungrouped), source (desktop, documents, downloads, home, icloud, onedrive, gdrive, dropbox, cloud, volume, disk), place, parents (the folders between the place and this one), trail (the same with the folder itself last), available and clash (null, place or parent: what tells two entries shown under the same folder name apart; a custom name is never marked).',
         },
         groups: {
           type: 'array',

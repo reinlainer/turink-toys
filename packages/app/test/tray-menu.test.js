@@ -6,7 +6,7 @@ const assert = require('node:assert');
 const { template } = require('../src/tray-menu');
 
 function folder(overrides) {
-  return { path: '/Users/me/Desktop/a', name: 'a', source: 'desktop', place: 'Desktop', parents: [], available: true, clash: null, ...overrides };
+  return { path: '/Users/me/Desktop/a', name: 'a', source: 'desktop', place: 'Desktop', parents: [], trail: ['a'], available: true, clash: null, ...overrides };
 }
 
 function actions() {
@@ -58,7 +58,7 @@ test('each folder opens on click and shows where it lives', () => {
   const a = actions();
   const sub = template(
     [
-      folder({ path: '/Users/me/Desktop/project/turink/labs/src/x', name: 'x', parents: ['project', 'turink', 'labs', 'src'] }),
+      folder({ path: '/Users/me/Desktop/project/turink/labs/src/x', name: 'x', parents: ['project', 'turink', 'labs', 'src'], trail: ['project', 'turink', 'labs', 'src', 'x'] }),
       folder({ path: '/Volumes/Photos/raw', name: 'raw', source: 'volume', place: 'Photos', available: false }),
     ],
     [],
@@ -67,7 +67,7 @@ test('each folder opens on click and shows where it lives', () => {
   ).find((item) => item.submenu).submenu;
 
   assert.strictEqual(sub[0].label, 'x');
-  assert.strictEqual(sub[0].sublabel, 'Desktop › … › turink › labs › src');
+  assert.strictEqual(sub[0].sublabel, 'Desktop › … › turink › labs › src › x');
   assert.strictEqual(sub[0].toolTip, '/Users/me/Desktop/project/turink/labs/src/x');
   assert.strictEqual(sub[0].enabled, true);
   sub[0].click();
