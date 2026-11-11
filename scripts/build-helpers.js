@@ -6,8 +6,8 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 // Compiles the native helpers listed in packages/core/native/helpers.json into
-// its build folder, where the core looks for them and from where the bundle
-// copies them.
+// the build folder named by native/helpers.js, where the core looks for them
+// and from where the bundle copies them.
 //
 // Each helper is wrapped in a minimal background-only application bundle. macOS
 // lists a bare executable by its file name in Privacy & Security and Login
@@ -20,7 +20,7 @@ const { execFileSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const NATIVE = path.join(ROOT, 'packages', 'core', 'native');
-const OUT = path.join(NATIVE, 'build');
+const { BUILD: OUT, HELPERS } = require(path.join(NATIVE, 'helpers.js'));
 const ICON = path.join(ROOT, 'packages', 'app', 'assets', 'generated', 'icon.icns');
 
 function sourceVersion(source) {
@@ -84,11 +84,10 @@ function main() {
     process.stdout.write('Native helpers are built on macOS only. Skipped.\n');
     return;
   }
-  const helpers = JSON.parse(fs.readFileSync(path.join(NATIVE, 'helpers.json'), 'utf8'));
   // Output from before the helpers were bundled would otherwise linger.
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(OUT, { recursive: true });
-  for (const helper of helpers) build(helper);
+  for (const helper of HELPERS) build(helper);
 }
 
 main();

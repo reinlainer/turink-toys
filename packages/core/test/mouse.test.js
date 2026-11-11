@@ -10,18 +10,18 @@ const reverser = require('../src/tasks/mouse/reverser');
 
 test('the helper and its files live under the given home directory', () => {
   const paths = reverser.layout('/Users/someone');
-  assert.equal(paths.installedApp, '/Users/someone/Library/Application Support/turink-toys/helpers/Turink-Toys Scroll Reverser.app');
+  assert.equal(paths.installedApp, '/Users/someone/Library/Application Support/turink-toys/helpers.noindex/Turink-Toys Scroll Reverser.app');
   assert.equal(paths.installed, `${paths.installedApp}/Contents/MacOS/scroll-reverser`);
   assert.equal(paths.state, '/Users/someone/Library/Application Support/turink-toys/state/scroll-reverser.json');
   assert.equal(paths.plist, `/Users/someone/Library/LaunchAgents/${reverser.LABEL}.plist`);
-  assert.ok(paths.bundled.endsWith('/packages/core/native/build/Turink-Toys Scroll Reverser.app/Contents/MacOS/scroll-reverser'));
+  assert.ok(paths.bundled.endsWith('/packages/core/native/build.noindex/Turink-Toys Scroll Reverser.app/Contents/MacOS/scroll-reverser'));
 });
 
 test('the agent runs the installed helper, reports its state and stays alive', () => {
   const xml = reverser.plistXml(reverser.layout('/Users/a&b'));
   assert.ok(xml.includes(`<string>${reverser.LABEL}</string>`));
   // A raw ampersand would make the property list unreadable to launchd.
-  assert.ok(xml.includes('/Users/a&amp;b/Library/Application Support/turink-toys/helpers/Turink-Toys Scroll Reverser.app/Contents/MacOS/scroll-reverser'));
+  assert.ok(xml.includes('/Users/a&amp;b/Library/Application Support/turink-toys/helpers.noindex/Turink-Toys Scroll Reverser.app/Contents/MacOS/scroll-reverser'));
   assert.ok(!/a&b/.test(xml));
   assert.match(xml, /<string>--state<\/string>\s*<string>[^<]*scroll-reverser\.json<\/string>/);
   assert.match(xml, /<key>RunAtLoad<\/key>\s*<true\/>/);

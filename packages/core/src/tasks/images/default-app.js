@@ -1,7 +1,6 @@
 'use strict';
 
 const fs = require('fs');
-const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const { defineTask } = require('../../kernel/manifest');
@@ -14,9 +13,7 @@ const run = promisify(execFile);
 // Which application opens a photo is a per-type setting kept by macOS. Reading
 // and changing it is done by a small native helper, because changing it needs
 // an application context to show the system's confirmation prompt.
-const NATIVE = path.resolve(__dirname, '..', '..', '..', 'native');
-const HELPER = require(path.join(NATIVE, 'helpers.json')).find((h) => h.executable === 'default-app');
-const BINARY = path.join(NATIVE, 'build', `${HELPER.name}.app`, 'Contents', 'MacOS', HELPER.executable);
+const BINARY = require('../../../native/helpers').helper('default-app').binary;
 
 const OUR_APP = 'toys.turink.app';
 const FALLBACK_APP = 'com.apple.Preview';

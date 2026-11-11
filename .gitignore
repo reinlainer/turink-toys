@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+*.noindex/
 out/
 *.log
 .DS_Store

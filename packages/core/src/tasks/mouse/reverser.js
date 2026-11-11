@@ -18,17 +18,17 @@ const run = promisify(execFile);
 // application, so the copy is replaced only when the helper's own version
 // changes; updating Turink Toys alone keeps the permission.
 
-const NATIVE = path.resolve(__dirname, '..', '..', '..', 'native');
-const HELPER = require(path.join(NATIVE, 'helpers.json')).find((h) => h.executable === 'scroll-reverser');
+const HELPER = require('../../../native/helpers').helper('scroll-reverser');
 const LABEL = HELPER.identifier;
 
 function layout(home = dirs.home) {
   const support = path.join(home, 'Library', 'Application Support', 'turink-toys');
-  const app = `${HELPER.name}.app`;
-  const installedApp = path.join(support, 'helpers', app);
+  // The copy stays out of Spotlight for the same reason as the bundled one; see
+  // native/helpers.js.
+  const installedApp = path.join(support, 'helpers.noindex', `${HELPER.name}.app`);
   return {
-    bundledApp: path.join(NATIVE, 'build', app),
-    bundled: path.join(NATIVE, 'build', app, 'Contents', 'MacOS', HELPER.executable),
+    bundledApp: HELPER.app,
+    bundled: HELPER.binary,
     installedApp,
     installed: path.join(installedApp, 'Contents', 'MacOS', HELPER.executable),
     state: path.join(support, 'state', `${HELPER.executable}.json`),
