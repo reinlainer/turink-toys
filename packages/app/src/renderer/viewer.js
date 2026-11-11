@@ -40,6 +40,10 @@
   };
 
   let t = {};
+  let words = { files: {} };
+  // The same Finder, clipboard and Share actions as the Images screen, with
+  // its notices shown in the viewer's own heads-up label.
+  const files = window.TurinkFileActions.create({ strings: () => words, toast: (text) => hud(text), format });
   let view = { wheel: 'nav' };
   const state = {
     list: [],
@@ -458,6 +462,23 @@
   ui.zoom.addEventListener('click', () => setMode(state.mode === 'fit' ? 'actual' : 'fit'));
   ui.lock.addEventListener('click', toggleKeepZoom);
   ui.pick.addEventListener('click', togglePick);
+
+  // Right-clicking the photo offers what can be done with the file itself.
+  document.addEventListener('contextmenu', (e) => {
+    const file = current();
+    if (!file) return;
+    e.preventDefault();
+    files.menu({
+      kind: 'file',
+      paths: [file],
+      picked: state.picks.has(file),
+      handlers: {
+        openDefault: () => window.turink.openDefault(file),
+        pick: togglePick,
+        trash,
+      },
+    });
+  });
   ui.full.addEventListener('click', toggleFullScreen);
 
   document.addEventListener('keydown', (e) => {
@@ -466,7 +487,13 @@
     // source the P key reports "ㅔ" rather than "p".
     const code = e.code;
     const center = { x: port().width / 2, y: port().height / 2 };
-    if (e.metaKey && k === 'Backspace') trash();
+    if (e.metaKey && e.altKey && code === 'KeyC') {
+      if (current()) files.copyPath([current()]);
+    } else if (e.metaKey && code === 'KeyC') {
+      if (current()) files.copy([current()]);
+    } else if (e.metaKey && e.altKey && code === 'KeyR') {
+      if (current()) files.reveal([current()]);
+    } else if (e.metaKey && k === 'Backspace') trash();
     else if (e.metaKey && code === 'KeyZ') undoTrash();
     else if (e.metaKey && (k === '=' || k === '+')) zoomAt(state.pos.scale * 1.25, center);
     else if (e.metaKey && k === '-') zoomAt(state.pos.scale / 1.25, center);
@@ -507,6 +534,7 @@
   (async () => {
     const strings = await window.turink.strings();
     t = strings.ui.viewer;
+    words = strings.ui;
     document.documentElement.lang = strings.locale;
     view = await window.turink.imagesView();
     ui.zoom.title = t.fitDone;

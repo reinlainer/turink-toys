@@ -933,6 +933,10 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .images-strip-only.on { background: var(--accent); color: var(--accent-ink); }
 .images-strip-button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 7px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
 .images-strip-button:hover { background: var(--surface-2); }
+.images-strip-button.icon-only { padding: 4px 6px; }
+.images-strip-button:disabled, .images-strip-clear:disabled { opacity: 0.45; cursor: default; }
+.images-strip-caret { margin-left: -2px; opacity: 0.7; }
+.images-strip-here { font-weight: 500; color: var(--ink-3); margin-left: 6px; }
 
 /* The bar under the list is about the list: what it holds, its order, the
    thumbnail size and the view options. */
@@ -951,8 +955,16 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 }
 .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--tile, 132px), 1fr)); gap: 6px; }
 .images-tile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 6px; border-radius: 10px; cursor: default; }
+/* A folder of thousands of items stays smooth: tiles off screen are not laid
+   out or painted, and a thumbnail arriving inside its fixed square never makes
+   the browser lay out the whole grid again. */
+.images-tile { content-visibility: auto; contain-intrinsic-block-size: auto calc(var(--tile, 132px) + 40px); }
+.images-thumb { contain: strict; }
 .images-tile:hover { background: var(--hover); }
-.images-tile.current { background: var(--accent-soft); }
+.images-tile[draggable="true"] { -webkit-user-drag: element; }
+/* The focused item is marked without colour, so it never reads as picked. */
+.images-tile.current { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.images-grid-wrap:focus .images-tile.current { box-shadow: inset 0 0 0 1.5px var(--line-strong); }
 .images-thumb { position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 6px; }
 .images-thumb.pdf img { background: #fff; }
 
@@ -969,16 +981,37 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .images-thumb img:not([src]), .images-thumb img.missing { width: 70%; height: 70%; background: var(--surface-2); box-shadow: none; }
 .images-thumb.folder { color: var(--accent); background: var(--surface-2); }
 .images-tile-name { font-size: 11.5px; text-align: center; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.images-tile.current .images-tile-name { color: var(--accent-text); font-weight: 600; }
+.images-tile.current .images-tile-name { color: var(--ink); font-weight: 600; }
+/* Picked: an accent ring hugging the photo, which shrinks a little to make
+   room, a filled check and a tinted name, so picks stand out at a glance. */
+.images-thumb img { transition: transform 0.12s ease; }
+.images-tile.picked .images-thumb img { outline: 3px solid var(--accent); outline-offset: 1px; transform: scale(0.9); }
+.images-tile.picked .images-tile-name { color: var(--accent-text); font-weight: 600; }
+/* Unpicked while viewing the picks: kept in place, faded, one click back. */
+.images-tile.dropped .images-thumb img { opacity: 0.35; filter: grayscale(0.7); }
+.images-tile.dropped .images-tile-name { color: var(--ink-3); text-decoration: line-through; }
+.images-pick-again {
+  display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1;
+  border: 0; border-radius: 999px; padding: 4px 11px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  background: var(--surface); color: var(--accent-text); box-shadow: var(--shadow-raised); cursor: pointer;
+}
+.images-tile.dropped .images-pick-again { display: block; }
+.images-group { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 10px 6px 2px; font-weight: 650; color: var(--ink-2); min-width: 0; }
+.images-group:first-child { padding-top: 2px; }
+.images-group-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.images-group-count { flex: none; font-weight: 500; color: var(--ink-3); font-size: 12px; }
+.images-group-reveal { flex: none; display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--ink-2); border-radius: 6px; padding: 3px 7px; font-size: 12px; cursor: pointer; }
+.images-group-reveal:hover { background: var(--hover); color: var(--ink); }
 .images-tile-sub { font-size: 10.5px; text-align: center; color: var(--ink-3); margin-top: -4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .images-pick-dot {
-  position: absolute; top: 10px; left: 10px; width: 20px; height: 20px; border-radius: 50%;
+  position: absolute; top: 9px; left: 9px; width: 22px; height: 22px; border-radius: 50%; z-index: 2;
   display: none; align-items: center; justify-content: center; cursor: pointer;
   border: 1.5px solid rgba(255, 255, 255, 0.95); background: rgba(0, 0, 0, 0.18); color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 .images-pick-dot .icon { opacity: 0; }
 .images-tile:hover .images-pick-dot, .images-tile.picked .images-pick-dot { display: flex; }
 .images-tile.picked .images-pick-dot { background: var(--accent); }
+.images-tile.dropped .images-pick-dot { display: flex; }
 .images-tile.picked .images-pick-dot .icon { opacity: 1; }
 .images-empty { padding: 60px 20px; text-align: center; color: var(--ink-3); grid-column: 1 / -1; }
 
@@ -1008,6 +1041,11 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .images-facts dt { color: var(--ink-3); }
 .images-facts dd { margin: 0; word-break: break-all; }
 .images-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.images-preview-head { display: flex; align-items: flex-start; gap: 8px; }
+.images-preview-head .images-preview-name { flex: 1; min-width: 0; padding-top: 3px; }
+.images-preview-tools { flex: none; display: flex; gap: 2px; margin: -2px -6px 0 0; }
+.images-tool { width: 28px; height: 28px; border: 0; border-radius: 7px; background: none; color: var(--ink-2); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.images-tool:hover { background: var(--hover); color: var(--ink); }
 .images-actions .button.on { border-color: var(--accent); color: var(--accent-text); background: var(--accent-soft); }
 .kbd { font-size: 11px; color: var(--ink-3); border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 4px; margin-left: 2px; }
 .button.primary .kbd { color: inherit; border-color: rgba(255, 255, 255, 0.4); }
@@ -1021,6 +1059,10 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .images-menu-head { font-size: 11px; color: var(--ink-3); padding: 6px 8px 3px; }
 .images-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 6px 8px; border-radius: 6px; text-align: left; cursor: pointer; }
 .images-menu-item:hover { background: var(--accent); color: var(--accent-ink); }
+.images-menu-key { margin-left: auto; padding-left: 16px; font-size: 12px; color: var(--ink-3); }
+.images-menu-item:hover .images-menu-key { color: inherit; opacity: 0.8; }
+.images-menu-item.danger { color: var(--danger); }
+.images-menu-item.danger:hover { background: var(--danger); color: #fff; }
 .images-menu-check { margin-left: auto; }
 .images-menu-sep { height: 1px; background: var(--line); margin: 5px 4px; }
 .images-menu-tip { font-size: 11.5px; color: var(--ink-3); padding: 4px 8px 6px; line-height: 1.5; white-space: normal; }

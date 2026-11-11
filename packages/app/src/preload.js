@@ -21,6 +21,14 @@ contextBridge.exposeInMainWorld('turink', {
   listRuns: () => ipcRenderer.invoke('runs:list'),
   readRun: (runId) => ipcRenderer.invoke('runs:read', runId),
   reveal: (target) => ipcRenderer.invoke('shell:reveal', target),
+  revealFiles: (paths) => ipcRenderer.invoke('files:reveal', paths),
+  copyFiles: (paths) => ipcRenderer.invoke('files:copy', paths),
+  copyPaths: (paths) => ipcRenderer.invoke('files:copyPaths', paths),
+  shareFiles: (paths, at) => ipcRenderer.invoke('files:share', { paths, at }),
+  fileMenu: (entries, at) => ipcRenderer.invoke('files:menu', { entries, at }),
+  // A drag has to start while the mouse is still down, so this one is sent
+  // rather than awaited.
+  dragFiles: (paths) => ipcRenderer.send('files:drag', paths),
   about: () => ipcRenderer.invoke('about:info'),
   loginItem: () => ipcRenderer.invoke('login:get'),
   setLoginItem: (enabled) => ipcRenderer.invoke('login:set', enabled),

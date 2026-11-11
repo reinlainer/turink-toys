@@ -46,6 +46,8 @@
     sliders: '<path d="M4 6h7M14.5 6H16M4 14h1.5M9 14h7"/><circle cx="12.75" cy="6" r="1.75"/><circle cx="7.25" cy="14" r="1.75"/>',
     lock: '<rect x="5" y="9" width="10" height="7.5" rx="1.5"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/>',
     expand: '<path d="M4 8V4h4M16 8V4h-4M4 12v4h4M16 12v4h-4"/>',
+    finder: '<rect x="3" y="3" width="14" height="14" rx="3"/><path d="M10 3c-1.2 2.6-1.6 4.8-1.2 7.5H10.5c-.2 2.2 0 4.3.6 6.5"/><path d="M6.5 7.2v1M13.5 7.2v1M6.5 12.6c2.1 1.3 4.9 1.3 7 0"/>',
+    share: '<path d="M10 2.5v9.5M7 5.5l3-3 3 3"/><path d="M7 8.5H5.5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H13"/>',
     display: '<rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M7.5 17h5M10 13.5V17"/>',
   };
 

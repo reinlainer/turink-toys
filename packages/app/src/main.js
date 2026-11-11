@@ -10,6 +10,7 @@ const updates = require('./updates');
 const UI_STRINGS = require('./strings');
 const trayMenu = require('./tray-menu');
 const images = require('./images');
+const files = require('./files');
 const { createViewer } = require('./viewer-window');
 
 const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
@@ -647,6 +648,18 @@ ipcMain.handle('settings:lastTask', (event, taskId) => {
 });
 ipcMain.handle('runs:read', (event, runId) => journal.read(runId));
 ipcMain.handle('shell:reveal', (event, target) => shell.showItemInFolder(target));
+
+// Handing files to Finder and other apps. The window the request came from is
+// where a menu opens and where a drag starts.
+const senderWindow = (event) => BrowserWindow.fromWebContents(event.sender);
+ipcMain.handle('files:reveal', (event, paths) => files.reveal(paths));
+ipcMain.handle('files:copy', (event, paths) => files.copyFiles(paths));
+ipcMain.handle('files:copyPaths', (event, paths) => files.copyPaths(paths));
+ipcMain.handle('files:share', (event, { paths, at }) => files.share(senderWindow(event), paths, at));
+ipcMain.handle('files:menu', (event, { entries, at }) => files.popupMenu(senderWindow(event), entries, at));
+ipcMain.on('files:drag', (event, paths) => {
+  files.startDrag(event.sender, paths, path.join(ASSETS, 'icon.png')).catch(() => {});
+});
 
 // ---------------------------------------------------------------- images
 

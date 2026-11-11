@@ -5,6 +5,7 @@ const { defineTask } = require('../../kernel/manifest');
 const { register } = require('../../kernel/registry');
 const { row } = require('../../kernel/present');
 const { statOrNull } = require('./files');
+const { kindOf, typeOf } = require('./formats');
 const store = require('./store');
 
 register(
@@ -22,7 +23,11 @@ register(
     output: {
       type: 'object',
       properties: {
-        images: { type: 'array', description: 'Selected photos that still exist, as { path, folder, name }.' },
+        images: {
+          type: 'array',
+          description:
+            'Selected items that still exist, as { path, folder, name, bytes, modified, kind, type }, the same fields images.list gives plus the folder. type is photo, video or pdf.',
+        },
         missing: { type: 'array', description: 'Selected paths that no longer exist.' },
       },
     },
@@ -43,7 +48,20 @@ register(
       const missing = [];
       for (const file of store.load()) {
         const stat = statOrNull(file);
-        if (stat && stat.isFile()) images.push({ path: file, folder: path.dirname(file), name: path.basename(file) });
+        // The same fields as images.list, so a screen can show a picked video
+        // or PDF as what it is wherever it was picked from.
+        if (stat && stat.isFile()) {
+          const name = path.basename(file);
+          images.push({
+            path: file,
+            folder: path.dirname(file),
+            name,
+            bytes: stat.size,
+            modified: stat.mtime.toISOString(),
+            kind: kindOf(name),
+            type: typeOf(name),
+          });
+        }
         else missing.push(file);
       }
       return { images, missing };

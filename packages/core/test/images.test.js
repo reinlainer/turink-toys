@@ -237,7 +237,14 @@ test('images.selected reads without changing the saved list', async () => {
   try {
     const before = JSON.stringify(storage.data);
     const result = await core.registry.get('images.selected').execute(run, {});
-    assert.deepStrictEqual(result.images, [{ path: kept, folder: dir, name: 'kept.jpg' }]);
+    assert.strictEqual(result.images.length, 1);
+    const [image] = result.images;
+    assert.deepStrictEqual(
+      { path: image.path, folder: image.folder, name: image.name, kind: image.kind, type: image.type },
+      { path: kept, folder: dir, name: 'kept.jpg', kind: 'direct', type: 'photo' }
+    );
+    assert.strictEqual(typeof image.bytes, 'number');
+    assert.ok(!Number.isNaN(Date.parse(image.modified)));
     assert.deepStrictEqual(result.missing, [path.join(dir, 'gone.jpg')]);
     assert.strictEqual(JSON.stringify(storage.data), before);
   } finally {

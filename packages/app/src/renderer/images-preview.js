@@ -70,6 +70,17 @@
       return b;
     }
 
+    // A square button with only an icon, named by its tooltip.
+    function iconButton(iconName, label, onClick) {
+      const b = el('button', 'images-tool');
+      b.type = 'button';
+      b.title = label;
+      b.setAttribute('aria-label', label);
+      b.appendChild(icon(iconName, null, 15));
+      b.addEventListener('click', () => onClick(b));
+      return b;
+    }
+
     // ---------------------------------------------------------- folder
 
     function showFolder(folder, count) {
@@ -208,7 +219,19 @@
       else if (file.type === 'pdf') showPdf(stage, file, rows);
       else showPhoto(stage, file, rows);
 
-      info.appendChild(el('div', 'images-preview-name', file.name));
+      // The name row carries the actions that hand the file to the rest of
+      // macOS, as Finder's own preview does, so the buttons below stay on one
+      // line.
+      const f = deps.fileStrings();
+      const head = el('div', 'images-preview-head');
+      const tools = el('div', 'images-preview-tools');
+      tools.append(
+        iconButton('finder', f.reveal, () => deps.reveal(file.path)),
+        iconButton('share', f.share, (b) => deps.share(file.path, b)),
+        iconButton('other', s.more, () => deps.more(file.path))
+      );
+      head.append(el('div', 'images-preview-name', file.name), tools);
+      info.appendChild(head);
       if (file.bytes !== undefined) rows.push([s.fileSize, formatBytes(file.bytes)]);
       if (file.modified) rows.push([s.modified, new Date(file.modified).toLocaleString()]);
       if (file.folder) rows.push([s.location, file.folder]);
