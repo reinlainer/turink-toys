@@ -5,12 +5,13 @@ const assert = require('node:assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { tempDir } = require('./temp');
 
 const { findLeftovers } = require('../src/tasks/apps/bundles');
 const { assertAppBundle } = require('../src/kernel/paths');
 
 function library(entries) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'turink-apps-'));
+  const root = tempDir('turink-apps-');
   for (const entry of entries) {
     const full = path.join(root, entry);
     fs.mkdirSync(path.dirname(full), { recursive: true });

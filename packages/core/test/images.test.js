@@ -3,8 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const { tempDir } = require('./temp');
 
 const core = require('../src');
 const formats = require('../src/tasks/images/formats');
@@ -12,7 +12,7 @@ const store = require('../src/tasks/images/store');
 const files = require('../src/tasks/images/files');
 
 function temp() {
-  return fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'turink-images-')));
+  return tempDir('turink-images-');
 }
 
 function touch(dir, name, content = 'x') {

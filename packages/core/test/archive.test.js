@@ -3,8 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const { tempDir: makeTempDir } = require('./temp');
 const yauzl = require('yauzl');
 
 require('../src/index');
@@ -12,7 +12,7 @@ const { runTask } = require('../src/kernel/execute');
 const { sanitizePath, isEscaping } = require('../src/tasks/archive/names');
 
 function tempDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'turink-test-'));
+  return makeTempDir('turink-test-');
 }
 
 function readEntries(file) {

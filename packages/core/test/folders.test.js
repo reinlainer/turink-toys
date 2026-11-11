@@ -3,15 +3,15 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const { tempDir } = require('./temp');
 
 const store = require('../src/tasks/folders/store');
 
 // A home directory of throwaway folders, so the tests never read or write the
 // person's own settings.
 function home(dirs = []) {
-  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'turink-folders-')));
+  const root = tempDir('turink-folders-');
   for (const dir of dirs) fs.mkdirSync(path.join(root, dir), { recursive: true });
   return root;
 }
