@@ -28,16 +28,20 @@ function unregister(bundle) {
 }
 
 function main() {
-  const build = path.join(ROOT, 'build');
+  // build/ is where bundles went before build.noindex/, and is still cleared
+  // so an old checkout leaves nothing behind.
+  const outputs = ['build.noindex', 'build', 'dist'];
 
-  if (fs.existsSync(build)) {
-    for (const entry of fs.readdirSync(build)) {
-      if (entry.endsWith('.app')) unregister(path.join(build, entry));
+  for (const name of outputs) {
+    const dir = path.join(ROOT, name);
+    if (!fs.existsSync(dir)) continue;
+    for (const entry of fs.readdirSync(dir)) {
+      if (entry.endsWith('.app')) unregister(path.join(dir, entry));
     }
   }
 
   let removed = 0;
-  for (const name of ['build', 'dist']) {
+  for (const name of outputs) {
     const target = path.join(ROOT, name);
     if (!fs.existsSync(target)) continue;
     fs.rmSync(target, { recursive: true, force: true });

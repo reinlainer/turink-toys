@@ -1089,7 +1089,6 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 
 /* ------------------------------------------------------------ clipboard */
 
-.clip-setting .setting-text p.clip-tip { font-size: 12.5px; color: var(--ink-3); }
 .clip-setting-side { flex: none; padding-top: 2px; }
 .clip-gallery { display: flex; flex-direction: column; gap: 8px; outline: none; min-height: 120px; }
 .clip-group { display: flex; align-items: baseline; gap: 8px; padding: 8px 2px 0; font-weight: 650; color: var(--ink-2); }
@@ -1110,6 +1109,5 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .clip-empty { padding: 50px 20px; text-align: center; color: var(--ink-3); }
 .clip-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin: 0 -14px -24px; background: color-mix(in srgb, var(--window) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); }
 .clip-bar-count { font-weight: 600; color: var(--accent-text); white-space: nowrap; }
-.clip-bar-hint { flex: 1; font-size: 12px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.clip-bar.has-selection .clip-bar-hint { visibility: hidden; }
+.clip-bar-space { flex: 1; }
 .clip-bar .danger-text:not(:disabled) { color: var(--danger); }

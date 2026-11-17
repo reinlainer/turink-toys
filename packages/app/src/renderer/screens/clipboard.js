@@ -28,16 +28,22 @@
       const t = () => s().clipboard;
       const state = { listing: null, selected: new Set(), anchor: null, focus: null };
 
-      root.appendChild(ctx.header(s().nav.clipboard, t().subtitle));
+      root.appendChild(ctx.header(s().nav.clipboard));
 
       // ------------------------------------------------ collection switch
 
       const card = el('section', 'card setting-card clip-setting');
       const head = el('div', 'setting-head');
       const text = el('div', 'setting-text');
+      // One string with a line per point, so a translation may use a
+      // different number of lines.
+      const points = (lines, className) => {
+        const list = el('ul', `setting-points${className ? ` ${className}` : ''}`);
+        for (const line of lines.split('\n').filter(Boolean)) list.appendChild(el('li', null, line));
+        return list;
+      };
       text.appendChild(el('h2', null, t().collect));
-      text.appendChild(el('p', null, t().collectNote));
-      text.appendChild(el('p', 'clip-tip', t().tip));
+      text.appendChild(points(t().collectPoints));
       head.appendChild(text);
       const side = el('div', 'clip-setting-side');
       const toggle = el('input', 'switch');
@@ -74,7 +80,7 @@
       copyButton.type = 'button';
       const trashButton = el('button', 'button small danger-text', t().trash);
       trashButton.type = 'button';
-      bar.append(count, el('span', 'clip-bar-hint', t().hint), reveal, copyButton, trashButton);
+      bar.append(count, el('span', 'clip-bar-space'), reveal, copyButton, trashButton);
       root.appendChild(bar);
 
       reveal.addEventListener('click', () => state.listing && window.turink.reveal(state.listing.folder));
@@ -129,7 +135,7 @@
         gallery.textContent = '';
         if (!listing) return;
         if (items().length === 0) {
-          gallery.appendChild(el('p', 'clip-empty', listing.collecting ? t().emptyOn : t().emptyOff));
+          gallery.appendChild(el('p', 'clip-empty', t().empty));
         } else {
           section(t().recent, listing.recent, true);
           section(t().older, listing.older, false);

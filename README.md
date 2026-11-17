@@ -354,10 +354,15 @@ because macOS reads those from the running bundle rather than from anything the
 process sets. Building one carries the product name instead:
 
 ```bash
-npm run bundle          # Turink Toys-dev, for local checks
-open "build/Turink Toys-dev.app"
-npm run clean           # remove it and withdraw it from Launch Services
+npm run install:dev     # build Turink Toys-dev and replace the copy in /Applications
+npm run bundle          # only build it, into build.noindex/
+npm run clean           # remove build output and withdraw it from Launch Services
 ```
+
+`install:dev` leaves one copy on the machine: the previous one is deleted
+rather than moved to the Trash, the built bundle is removed once copied, and
+Launch Services forgets both, since macOS offers every copy it has seen in
+Spotlight, Launchpad and Open With.
 
 A development build is named `Turink Toys-dev` and identified as
 `toys.turink.app.dev`, so it never looks like a second copy of an installed

@@ -20,6 +20,7 @@
     "bundle": "npm run clean && node scripts/bundle-app.js",
     "release": "node scripts/build-release.js",
     "bundle:release": "npm run clean && node scripts/bundle-app.js --release",
+    "install:dev": "node scripts/install-dev.js",
     "clean": "node scripts/clean.js"
   },
   "engines": {

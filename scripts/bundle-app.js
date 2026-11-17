@@ -38,7 +38,9 @@ const RELEASE = process.argv.includes('--release');
 const DISPLAY_NAME = RELEASE ? 'Turink Toys' : 'Turink Toys-dev';
 const BUNDLE_ID = RELEASE ? 'toys.turink.app' : 'toys.turink.app.dev';
 
-const OUT = path.join(ROOT, 'build');
+// Spotlight skips a folder whose name ends in .noindex, so the bundle built
+// here never shows up beside the installed application.
+const OUT = path.join(ROOT, 'build.noindex');
 const BUNDLE = path.join(OUT, `${DISPLAY_NAME}.app`);
 const SOURCE = path.join(ROOT, 'node_modules', 'electron', 'dist', 'Electron.app');
 

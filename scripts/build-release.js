@@ -15,7 +15,7 @@ const ROOT = path.resolve(__dirname, '..');
 // Only the release identity is ever packaged. A development bundle carries a
 // different name and identifier, so naming it here would ship the wrong build.
 const DISPLAY_NAME = 'Turink Toys';
-const BUILD = path.join(ROOT, 'build');
+const BUILD = path.join(ROOT, 'build.noindex');
 const DIST = path.join(ROOT, 'dist');
 
 function version() {
