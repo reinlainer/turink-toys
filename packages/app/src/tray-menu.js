@@ -47,7 +47,7 @@ function template(folders, groups, actions, appName, screens = strings.nav) {
 
   return [
     // The screens used most get their own way in; the rest open in the window.
-    { label: screens.apps, click: () => actions.screen('apps') },
+    { label: screens.clipboard, click: () => actions.screen('clipboard') },
     { label: screens.power, click: () => actions.screen('power') },
     {
       label: screens.folders,

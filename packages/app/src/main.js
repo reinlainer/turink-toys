@@ -12,6 +12,7 @@ const trayMenu = require('./tray-menu');
 const images = require('./images');
 const files = require('./files');
 const { createViewer } = require('./viewer-window');
+const clipboardWatcher = require('./clipboard-watcher');
 
 const ASSETS = path.join(__dirname, '..', 'assets', 'generated');
 
@@ -141,7 +142,7 @@ function setLoginItem(enabled) {
 
 // ---------------------------------------------------------------- tray
 
-// The tray opens the Applications or Power screen, saved folders, the window
+// The tray opens the Clipboard or Power screen, saved folders, the window
 // where it was left, and quits. Status, running tasks and settings
 // live in the window. Its contents are built in tray-menu.js.
 
@@ -516,7 +517,10 @@ ipcMain.handle('shell:settings', (event, pane) => {
 ipcMain.handle('task:peek', async (event, { taskId, input }) => {
   try {
     const outcome = await runInWorker(taskId, input || {}, { source: 'app', ephemeral: true });
-    if (registry.get(taskId).preference) refreshTray();
+    if (registry.get(taskId).preference) {
+      refreshTray();
+      syncClipboard();
+    }
     return { ok: true, ...outcome };
   } catch (failure) {
     return { ok: false, error: i18n.localizeError(failure.error, locale) };
@@ -772,6 +776,36 @@ ipcMain.handle('images:watch', (event, folder) => {
   }
 });
 
+// ---------------------------------------------------------------- clipboard
+
+// Collection runs while the app is open and the setting is on. The setting can
+// change from the window or the command line, so both end in syncClipboard.
+const clipboardWatch = clipboardWatcher.create({
+  binary: core.clipboard.HELPER.binary,
+  folder: core.clipboard.FOLDER,
+});
+
+function syncClipboard() {
+  clipboardWatch.set(core.clipboard.collecting());
+}
+
+// New images, removals and restores all change the folder, whoever made them.
+function watchClipboardFolder() {
+  let timer = null;
+  try {
+    fs.mkdirSync(core.clipboard.FOLDER, { recursive: true });
+    fs.watch(core.clipboard.FOLDER, () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => send('clipboard:changed'), 200);
+    }).on('error', () => {});
+  } catch {
+    // Without the folder the screen still lists what it can; it just will not refresh.
+  }
+  fs.watchFile(settings.FILE, { interval: 1500 }, syncClipboard);
+}
+
+app.on('will-quit', () => clipboardWatch.stop());
+
 // ---------------------------------------------------------------- lifecycle
 
 app.whenReady().then(() => {
@@ -793,6 +827,8 @@ app.whenReady().then(() => {
   else createWindow();
   createTray();
   watchFolderSources();
+  watchClipboardFolder();
+  syncClipboard();
 
   // A run started from the command line or a quick action writes to the same
   // journal directory. Watching it is what lets someone see an agent working

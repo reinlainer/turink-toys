@@ -40,6 +40,7 @@
     external: '<path d="M11.5 3.5h5v5"/><path d="M16.5 3.5L9.5 10.5"/><path d="M15 11.5v4a1 1 0 0 1-1 1H4.5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4"/>',
     plus: '<path d="M10 4.5v11M4.5 10h11"/>',
     'arrow-up-right': '<path d="M6.5 13.5l7-7M8 6.5h5.5V12"/>',
+    clipboard: '<rect x="4.5" y="4" width="11" height="13.5" rx="1.5"/><path d="M7.5 4V3.2a.7.7 0 0 1 .7-.7h3.6a.7.7 0 0 1 .7.7V4"/><path d="M7 14.5l2.2-2.5 1.6 1.6 1.2-1.1 1.5 2"/><circle cx="8.4" cy="8.6" r="1"/>',
     image: '<rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="7.5" cy="8.5" r="1.5"/><path d="M3.5 14l4-4 3 3 2-2 4 4"/>',
     pick: '<circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/>',
     'chevron-down': '<path d="M5.5 8l4.5 4.5L14.5 8"/>',

@@ -61,5 +61,6 @@ contextBridge.exposeInMainWorld('turink', {
   onLoginItem: (handler) => ipcRenderer.on('login:changed', (event, state) => handler(state)),
   onFocusRun: (handler) => ipcRenderer.on('run:focus', (event, runId) => handler(runId)),
   onFoldersChanged: (handler) => ipcRenderer.on('folders:changed', () => handler()),
+  onClipboardChanged: (handler) => ipcRenderer.on('clipboard:changed', () => handler()),
   onShowScreen: (handler) => ipcRenderer.on('screen:show', (event, id) => handler(id)),
 });

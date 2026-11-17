@@ -46,6 +46,7 @@ module.exports = {
     power: 'Power',
     folders: 'Folders',
     images: 'Images',
+    clipboard: 'Clipboard',
     other: 'More',
   },
 
@@ -339,6 +340,27 @@ module.exports = {
 
   // Handing files to Finder and other apps, shared by the Images screen and
   // the viewer window.
+  clipboard: {
+    subtitle: 'Images copied to the clipboard are kept here, so screenshots need not pile up as files. Nothing is removed automatically.',
+    collect: 'Collect clipboard images',
+    collectNote: 'While Turink Toys is open, every image copied to the clipboard is kept once. Files copied in Finder and private content from password managers are left out.',
+    tip: 'Hold Control while taking a screenshot (⌃⇧⌘4) to send it to the clipboard instead of a file. To make that the default, choose Clipboard under Options in ⌘⇧5.',
+    recent: 'Last 24 hours',
+    older: 'Older',
+    emptyOff: 'Turn on collection to keep images copied to the clipboard.',
+    emptyOn: 'Copy an image or take a screenshot to the clipboard, and it appears here.',
+    openFolder: 'Show in Finder',
+    copied: 'Copied to the clipboard. Paste it with ⌘V.',
+    copiedMany: 'Copied {count} images to the clipboard. Paste them with ⌘V.',
+    trashed: 'Moved 1 image to the Trash.',
+    trashedMany: 'Moved {count} images to the Trash.',
+    selection: '{count} selected',
+    copy: 'Copy',
+    view: 'View',
+    trash: 'Move to Trash',
+    hint: 'Click, ⌘-click or ⇧-click to select. ⌘C copies, ⌘⌫ moves to the Trash, Space shows it large.',
+  },
+
   files: {
     selectedHead: '{count} selected items',
     openViewer: 'View in Viewer',

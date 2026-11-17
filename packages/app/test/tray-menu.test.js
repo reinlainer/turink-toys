@@ -25,27 +25,27 @@ test('the top level holds the screens and Folders, then the window and Quit', ()
   const menu = template([], [], actions(), 'Turink Toys');
   assert.deepStrictEqual(
     menu.map((item) => item.label || item.type),
-    ['Applications', 'Power', 'Folders', 'separator', 'Open Turink Toys', 'Quit']
+    ['Clipboard', 'Power', 'Folders', 'separator', 'Open Turink Toys', 'Quit']
   );
   assert.ok(menu[2].submenu);
   assert.strictEqual(menu[5].role, 'quit');
 });
 
 test('screen items carry the names they are given, the rest stays English', () => {
-  const menu = template([], [], actions(), 'Turink Toys', { apps: '앱 관리', power: '전원', folders: '폴더' });
+  const menu = template([], [], actions(), 'Turink Toys', { clipboard: '클립보드', power: '전원', folders: '폴더' });
   assert.deepStrictEqual(
     menu.map((item) => item.label || item.type),
-    ['앱 관리', '전원', '폴더', 'separator', 'Open Turink Toys', 'Quit']
+    ['클립보드', '전원', '폴더', 'separator', 'Open Turink Toys', 'Quit']
   );
 });
 
 test('the screen items open the window on their screen', () => {
   const a = actions();
   const menu = template([], [], a, 'Turink Toys');
-  menu.find((item) => item.label === 'Applications').click();
+  menu.find((item) => item.label === 'Clipboard').click();
   menu.find((item) => item.label === 'Power').click();
   menu.find((item) => item.label === 'Open Turink Toys').click();
-  assert.deepStrictEqual(a.calls, [['screen', 'apps'], ['screen', 'power'], ['window']]);
+  assert.deepStrictEqual(a.calls, [['screen', 'clipboard'], ['screen', 'power'], ['window']]);
 });
 
 test('an empty list says so and still offers adding', () => {

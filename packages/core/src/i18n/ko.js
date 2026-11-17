@@ -17,6 +17,7 @@ module.exports = {
     disk: '디스크',
     power: '전원',
     apps: '앱',
+    clipboard: '클립보드',
   },
 
   update: {
@@ -93,6 +94,7 @@ module.exports = {
       power: '전원',
       folders: '폴더',
       images: '이미지',
+      clipboard: '클립보드',
       other: '기타',
     },
 
@@ -379,6 +381,27 @@ module.exports = {
       pickRedone: '선택 변경을 다시 실행했습니다.',
     },
 
+    clipboard: {
+      subtitle: '클립보드에 복사한 이미지를 이곳에 모아 둡니다. 캡처 파일이 쌓이지 않으며, 자동으로 지우지 않습니다.',
+      collect: '클립보드 이미지 모으기',
+      collectNote: 'Turink Toys가 켜져 있는 동안 클립보드에 복사한 이미지를 한 번씩 보관합니다. Finder에서 복사한 파일과 암호 관리자의 비공개 내용은 제외합니다.',
+      tip: '⌃를 누른 채 캡처하면(⌃⇧⌘4) 파일 대신 클립보드로 보냅니다. 기본값으로 바꾸려면 ⌘⇧5의 옵션에서 저장 위치를 ‘클립보드’로 고르십시오.',
+      recent: '최근 24시간',
+      older: '지난 이미지',
+      emptyOff: '모으기를 켜면 클립보드에 복사한 이미지가 이곳에 보관됩니다.',
+      emptyOn: '이미지를 복사하거나 클립보드로 캡처하면 이곳에 나타납니다.',
+      openFolder: 'Finder에서 보기',
+      copied: '클립보드에 복사했습니다. ⌘V로 붙여 넣을 수 있습니다.',
+      copiedMany: '이미지 {count}개를 클립보드에 복사했습니다. ⌘V로 붙여 넣을 수 있습니다.',
+      trashed: '이미지 1개를 휴지통으로 이동했습니다.',
+      trashedMany: '이미지 {count}개를 휴지통으로 이동했습니다.',
+      selection: '{count}개 선택',
+      copy: '복사',
+      view: '보기',
+      trash: '휴지통으로 이동',
+      hint: '클릭, ⌘클릭, ⇧클릭으로 고르고 ⌘C로 복사, ⌘⌫로 휴지통 이동, 스페이스로 크게 봅니다.',
+    },
+
     files: {
       selectedHead: '선택한 항목 {count}개',
       openViewer: '뷰어에서 보기',
@@ -467,6 +490,14 @@ module.exports = {
   // Row labels and values a finished run shows. Kept short because they sit in
   // a narrow column beside their value.
   result: {
+    recent: '최근 24시간',
+    older: '지난 이미지',
+    duplicate: '이미 보관됨',
+    saved: '보관한 위치',
+    collecting: '모으기',
+    on: '켜짐',
+    off: '꺼짐',
+    yes: '예',
     files: '파일',
     folders: '폴더',
     folder: '폴더',
@@ -606,6 +637,14 @@ module.exports = {
     APP_RUNNING: {
       message: '실행 중인 앱은 삭제할 수 없습니다.',
       hint: '앱을 종료한 후 다시 시도하십시오.',
+    },
+    NOT_KEPT: {
+      message: '클립보드 보관함에 있는 이미지가 아닙니다.',
+      hint: 'clipboard.list가 알려 준 경로를 사용하십시오.',
+    },
+    NO_IMAGE: {
+      message: '클립보드에 보관할 이미지가 없습니다.',
+      hint: '이미지를 복사한 후 다시 실행하십시오.',
     },
     HELPER_MISSING: {
       message: '이 빌드에는 필요한 도우미가 포함되어 있지 않습니다.',
@@ -933,6 +972,42 @@ module.exports = {
         '휴지통으로 이동한 사진을 원래 위치로 되돌릴 때 사용합니다. 해당 삭제 작업의 실행 번호가 필요합니다. 원래 이름을 이미 다른 파일이 사용하고 있으면 덮어쓰지 않고 그 사실을 보고합니다.',
       input: {
         run: { label: '실행 번호', description: '되돌릴 사진 삭제 작업의 실행 번호입니다.' },
+      },
+    },
+
+    'clipboard.list': {
+      title: '클립보드 이미지',
+      summary: '클립보드에서 보관한 이미지를 최근 24시간과 그 이전으로 나눠 보기',
+      whenToUse:
+        '클립보드에서 보관한 이미지를 확인할 때 사용합니다. clipboard.copy로 다시 클립보드에 넣거나 images.trash로 지울 이미지를 고를 때도 씁니다. 모으기가 켜져 있고 Turink Toys가 실행 중이면 클립보드에 복사한 이미지(⌃를 누른 채 찍은 화면 캡처 등)를 한 번씩 보관합니다. Finder에서 복사한 파일과 암호 관리자가 비공개로 표시한 내용은 보관하지 않으며, 자동으로 지우지 않습니다. 폴더를 읽기만 합니다.',
+      input: {},
+    },
+
+    'clipboard.copy': {
+      title: '클립보드로 복사',
+      summary: '보관한 이미지를 다시 클립보드에 넣기',
+      whenToUse:
+        '보관한 이미지를 다시 붙여 넣을 때 사용합니다. 화면 캡처처럼 이미지 자체를 클립보드에 넣으며, 클립보드에 있던 내용은 바뀝니다. 여러 개를 고르면 여러 항목으로 넣습니다. clipboard.list가 알려 준 이미지만 받으며, 다시 넣은 이미지는 중복 보관하지 않습니다.',
+      input: {
+        paths: { label: '이미지', description: '클립보드에 넣을 보관 이미지의 경로입니다.' },
+      },
+    },
+
+    'clipboard.save': {
+      title: '클립보드 이미지 보관',
+      summary: '지금 클립보드에 있는 이미지를 보관',
+      whenToUse:
+        '모으기를 기다리지 않고 지금 클립보드의 이미지를 보관할 때 사용합니다. 스크립트에서 쓰거나 Turink Toys가 꺼져 있을 때 유용합니다. 이미 보관한 이미지면 다시 저장하지 않고 중복으로 알립니다.',
+      input: {},
+    },
+
+    'clipboard.collect': {
+      title: '클립보드 이미지 모으기',
+      summary: '클립보드 이미지 보관을 켜거나 끄기',
+      whenToUse:
+        'Turink Toys가 켜져 있는 동안 클립보드에 복사한 이미지를 보관할지 정할 때 사용합니다. 처음에는 꺼져 있습니다. 끄더라도 이미 보관한 이미지는 남아 있습니다.',
+      input: {
+        on: { label: '모으기', description: 'true면 새 클립보드 이미지를 보관하고, false면 멈춥니다.' },
       },
     },
 

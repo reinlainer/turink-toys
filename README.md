@@ -61,6 +61,10 @@ application in place.
 | `images.restore` | Return items that a previous images.trash moved to the Trash |
 | `images.default-app` | Show which application opens each photo type by default |
 | `images.set-default-app` | Make an application the default for photo types, or give them back to Preview |
+| `clipboard.list` | List the images kept from the clipboard, the last day apart from the rest |
+| `clipboard.save` | Keep the image on the clipboard now |
+| `clipboard.copy` | Put kept images back on the clipboard |
+| `clipboard.collect` | Turn keeping clipboard images on or off |
 | `mouse.status` | Report whether the mouse wheel direction is reversed |
 | `mouse.reverse` | Reverse the scroll direction of mouse wheels and leave the trackpad as it is |
 

@@ -35,6 +35,10 @@ require('./tasks/images/trash');
 require('./tasks/images/restore');
 require('./tasks/mouse/status');
 require('./tasks/mouse/reverse');
+require('./tasks/clipboard/list');
+require('./tasks/clipboard/save');
+require('./tasks/clipboard/copy');
+require('./tasks/clipboard/collect');
 
 module.exports = {
   registry: require('./kernel/registry'),
@@ -49,4 +53,6 @@ module.exports = {
   paths: require('./kernel/paths'),
   // The viewer decides what to draw from the same table the tasks use.
   images: require('./tasks/images/formats'),
+  // The window runs the collecting helper itself and needs to know where.
+  clipboard: require('./tasks/clipboard/store'),
 };

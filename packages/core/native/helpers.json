@@ -10,5 +10,11 @@
     "executable": "default-app",
     "name": "Turink-Toys Default App",
     "identifier": "toys.turink.app.default-app"
+  },
+  {
+    "source": "clipboard.swift",
+    "executable": "clipboard",
+    "name": "Turink-Toys Clipboard",
+    "identifier": "toys.turink.app.clipboard"
   }
 ]
