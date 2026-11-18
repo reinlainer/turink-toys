@@ -175,13 +175,17 @@ Path validation lives in one place in the core, so no front end can reach a task
 without passing it. Deletion is confined to the home directory, with one
 exception: an application bundle inside `/Applications` or `~/Applications`.
 
-`apps.uninstall` removes an application together with the files named after its
-bundle identifier under `~/Library`. A folder that only shares the application's
-name is included but marked as such in the plan, and Group Containers are left
-alone because a vendor's applications share them. Applications protected by
-System Integrity Protection, this tool itself and anything running are refused.
-Finder asks for an administrator password itself when the bundle belongs to
-another user.
+`apps.uninstall` removes an application together with the files under
+`~/Library` named after its bundle identifier or after a helper or extension
+shipped inside it, and the Group Containers its signature declares. A folder
+that only shares the application's name is included but marked as such in the
+plan. A Group Container or component that another installed application from
+the same vendor also uses is left in place and listed as kept. Applications
+protected by System Integrity Protection, this tool itself, anything running
+and anything with a cloud storage account still connected are refused; the
+account is disconnected in the application first, so its synced folder is not
+left behind. Finder asks for an administrator password itself when the bundle
+belongs to another user.
 
 Items under the home directory move into the Trash with `/usr/bin/trash` and
 back out by their exact path. Applications move through Finder, which raises

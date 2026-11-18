@@ -19,6 +19,8 @@
     loginToggle: document.getElementById('login-toggle'),
     loginLabel: document.getElementById('login-label'),
     activity: document.getElementById('activity'),
+    app: document.querySelector('.app'),
+    sidebarToggle: document.getElementById('sidebar-toggle'),
     activityToggle: document.getElementById('activity-toggle'),
     activityLabel: document.getElementById('activity-label'),
     activityDot: document.getElementById('activity-dot'),
@@ -45,6 +47,7 @@
   let screens = [];
   let current = null;
   let busy = false;
+  let sidebarCollapsed = false;
 
   const s = () => strings;
   const taskById = (id) => tasks.find((task) => task.id === id) || null;
@@ -337,7 +340,11 @@
       button.type = 'button';
       button.setAttribute('aria-current', String(current && current.id === screen.id));
       button.appendChild(icon(screen.icon, 'nav-icon'));
-      button.appendChild(el('span', 'nav-label', strings.nav[screen.id] || screen.id));
+      const label = strings.nav[screen.id] || screen.id;
+      button.appendChild(el('span', 'nav-label', label));
+      // With the labels hidden the name still shows on hover and is read out.
+      button.dataset.sideTip = label;
+      if (sidebarCollapsed) button.setAttribute('aria-label', label);
       button.addEventListener('click', () => show(screen.id));
       ui.nav.appendChild(button);
     }
@@ -381,7 +388,60 @@
     ui.activityClear.textContent = strings.activity.clear;
     ui.activityRecent.textContent = strings.activity.recent;
     ui.loginLabel.textContent = strings.loginItem.label;
+    applySidebar();
     term.render();
+  }
+
+  // ------------------------------------------------------------- sidebar
+
+  function applySidebar() {
+    ui.app.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+    const label = sidebarCollapsed ? strings.sidebar.expand : strings.sidebar.collapse;
+    ui.sidebarToggle.dataset.sideTip = label;
+    ui.sidebarToggle.setAttribute('aria-label', label);
+    ui.sidebarToggle.setAttribute('aria-expanded', String(!sidebarCollapsed));
+    ui.activityToggle.dataset.sideTip = strings.activity.title;
+    hideTip();
+    if (current) buildNav();
+  }
+
+  // The collapsed sidebar names each icon on hover at once, beside it. It looks
+  // like the [data-tip] tooltips elsewhere but cannot be one: those open below
+  // their button, where here they would cover the next icon, and the scrolling
+  // list would clip anything drawn past its edge. So one element outside the
+  // sidebar serves every icon. Expanded, the labels are visible and the
+  // sidebar toggle alone keeps a tip.
+  const tip = el('div', 'side-tip');
+  tip.hidden = true;
+  document.body.appendChild(tip);
+
+  function hideTip() {
+    tip.hidden = true;
+  }
+
+  function showTip(target) {
+    tip.textContent = target.dataset.sideTip;
+    const box = target.getBoundingClientRect();
+    tip.style.left = `${box.right + 8}px`;
+    tip.style.top = `${box.top + box.height / 2}px`;
+    tip.hidden = false;
+  }
+
+  document.addEventListener('mouseover', (event) => {
+    const target = event.target.closest && event.target.closest('.sidebar [data-side-tip]');
+    if (target && (sidebarCollapsed || target === ui.sidebarToggle)) showTip(target);
+    else hideTip();
+  });
+  document.documentElement.addEventListener('mouseleave', hideTip);
+  ui.app.querySelector('.sidebar').addEventListener('click', hideTip);
+  ui.nav.addEventListener('scroll', hideTip);
+
+  // The choice is kept by the main process, which also labels the View menu
+  // item after it.
+  function setSidebar(collapsed) {
+    sidebarCollapsed = collapsed;
+    applySidebar();
+    window.turink.setSidebarCollapsed(collapsed);
   }
 
   async function changeLocale(next) {
@@ -444,6 +504,8 @@
   });
 
   ui.activityToggle.addEventListener('click', () => setActivity(ui.activity.hidden));
+  ui.sidebarToggle.addEventListener('click', () => setSidebar(!sidebarCollapsed));
+  window.turink.onToggleSidebar(() => setSidebar(!sidebarCollapsed));
   ui.activityClose.addEventListener('click', () => setActivity(false));
   ui.raw.addEventListener('change', () => term.render());
   ui.activityClear.addEventListener('click', () => term.clear());
@@ -473,6 +535,11 @@
     const payload = await window.turink.strings();
     strings = payload.ui;
     availableLocales = payload.available;
+    // The remembered width is applied without the transition, so the window
+    // opens at it rather than animating there.
+    sidebarCollapsed = payload.sidebarCollapsed === true;
+    ui.app.classList.add('no-transition');
+    requestAnimationFrame(() => requestAnimationFrame(() => ui.app.classList.remove('no-transition')));
     buildLanguageSelect(payload.locale);
     showLoginItem(await window.turink.loginItem());
     tasks = await window.turink.listTasks();

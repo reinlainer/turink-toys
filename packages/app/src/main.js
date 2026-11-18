@@ -284,8 +284,21 @@ function buildMenu() {
   appMenu.build(
     (key, fallback, params) => i18n.t(locale, key, fallback, params),
     () => createWindow(),
-    () => openAbout()
+    () => openAbout(),
+    { sidebarCollapsed: settings.get('sidebarCollapsed', false) === true, onToggleSidebar: toggleSidebar }
   );
+}
+
+// The window owns the sidebar while it is open, so the menu asks it to switch
+// and it reports back through sidebar:set. With no window the setting itself
+// changes, and the next window opens with it.
+function toggleSidebar() {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isLoading()) {
+    send('sidebar:toggle');
+    return;
+  }
+  settings.set('sidebarCollapsed', settings.get('sidebarCollapsed', false) !== true);
+  buildMenu();
 }
 
 // ---------------------------------------------------------------- ipc
@@ -315,7 +328,14 @@ ipcMain.handle('i18n:strings', () => ({
   available: i18n.available(),
   ui: buildUiStrings(),
   lastTask: settings.get('lastTask', null),
+  sidebarCollapsed: settings.get('sidebarCollapsed', false) === true,
 }));
+
+ipcMain.handle('sidebar:set', (event, collapsed) => {
+  settings.set('sidebarCollapsed', collapsed === true);
+  buildMenu();
+  return collapsed === true;
+});
 
 ipcMain.handle('i18n:set', (event, next) => {
   locale = i18n.normalize(next);

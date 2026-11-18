@@ -87,7 +87,12 @@ h1, h2, h3, p { margin: 0; }
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr);
   height: 100vh;
+  transition: grid-template-columns 0.18s ease;
 }
+/* Collapsed, the sidebar is as wide as the window buttons above it, so they
+   never sit over the screen's content. */
+.app.sidebar-collapsed { grid-template-columns: 78px minmax(0, 1fr); }
+.app.no-transition { transition: none; }
 
 .drag-region { height: 40px; flex: none; -webkit-app-region: drag; }
 
@@ -111,7 +116,8 @@ h1, h2, h3, p { margin: 0; }
 
 .brand-mark { width: 28px; height: 28px; flex: none; }
 
-.brand-name { font-weight: 650; font-size: 14px; letter-spacing: -0.01em; }
+.brand-name { font-weight: 650; font-size: 14px; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; }
+.sidebar-toggle { width: 28px; height: 28px; margin-left: auto; }
 
 .nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; }
 
@@ -144,6 +150,35 @@ h1, h2, h3, p { margin: 0; }
 .nav-item[aria-pressed="true"] { background: var(--hover); color: var(--ink); }
 
 .activity-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+
+/* Collapsed: icons only. The toggle takes the brand's place, and the login and
+   language controls, which are set once and rarely revisited, step aside. */
+.sidebar-collapsed .sidebar { padding: 0 12px 12px; }
+.sidebar-collapsed .brand { justify-content: center; padding: 4px 0 18px; }
+.sidebar-collapsed .brand-mark,
+.sidebar-collapsed .brand-name,
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed .login-item,
+.sidebar-collapsed .language-select { display: none; }
+.sidebar-collapsed .sidebar-toggle { margin-left: 0; }
+.sidebar-collapsed .nav-item { justify-content: center; padding: 8px 0; position: relative; }
+.sidebar-collapsed .activity-dot { position: absolute; top: 5px; right: 8px; }
+
+/* Same look as the [data-tip] tooltips, placed beside the icon. */
+.side-tip {
+  position: fixed;
+  z-index: 50;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #1f2429;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.side-tip[hidden] { display: none; }
 
 .sidebar-foot {
   display: flex;
@@ -871,13 +906,22 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 }
 .plan-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
 .plan-row + .plan-row { border-top: 1px solid var(--line); }
-.plan-row.app { background: var(--surface-2); }
-.plan-row:not(.app) .plan-text { padding-left: 2px; }
+.plan-row.is-app { background: var(--surface-2); }
+.plan-row:not(.is-app) .plan-text { padding-left: 2px; }
 .plan-text { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
-.plan-row.app .plan-text, .plan-list .plan-text:has(.plan-name) { flex-direction: column; align-items: flex-start; gap: 1px; }
+.plan-row.is-app .plan-text, .plan-list .plan-text:has(.plan-name) { flex-direction: column; align-items: flex-start; gap: 1px; }
 .plan-name { font-weight: 600; }
 .plan-path { color: var(--ink-2); font-size: 12px; word-break: break-all; }
 .plan-size { font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; white-space: nowrap; }
+/* A plan with notes and a kept list scrolls as one area, so the sheet's title,
+   total and buttons stay in view however long it gets. */
+.plan-body { max-height: 50vh; overflow-y: auto; margin-bottom: 16px; }
+.plan-body .plan-list { max-height: none; overflow: visible; }
+.plan-body > :last-child { margin-bottom: 0; }
+.plan-note { color: var(--ink-2); font-size: 12px; line-height: 1.5; margin: -6px 0 16px; }
+.plan-heading { font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin: 0 0 6px; }
+.plan-list.kept .plan-text { flex-direction: column; align-items: flex-start; gap: 1px; }
+.plan-shared { color: var(--ink-3); font-size: 11.5px; }
 
 /* picker sheet used by the generic form */
 .sheet-options { border: 1px solid var(--line); border-radius: 10px; max-height: 46vh; overflow-y: auto; margin-bottom: 16px; padding: 4px; }

@@ -11,7 +11,7 @@ register(
     title: 'List applications',
     summary: 'List installed applications that can be removed',
     whenToUse:
-      'Before calling apps.uninstall, to learn the exact name, bundle identifier and path it accepts, and whether the application is running. Reads application metadata only, not their contents.',
+      'Before calling apps.uninstall, to learn the exact name, bundle identifier and path it accepts, whether the application is running, and which cloud storage folders it still has connected (cloudStorage), since apps.uninstall refuses both until the app is quit or the account disconnected. Reads application metadata only, not their contents.',
     risk: 'read',
     cost: 'cheap',
     idempotent: true,
@@ -32,7 +32,7 @@ register(
       properties: {
         apps: {
           type: 'array',
-          description: 'Name, bundle identifier, version, path, whether it is running and why it is protected.',
+          description: 'Name, bundle identifier, version, path, whether it is running, why it is protected and the cloud storage folders connected through it.',
         },
       },
     },
@@ -48,13 +48,13 @@ register(
     ],
     present(result, t) {
       return {
-        rows: ((result && result.apps) || []).map((app) =>
-          row(
-            app.name,
-            app.running ? `${app.version || ''} · ${t('result.running', 'running')}`.trim() : app.version || '',
-            app.running ? 'warn' : null
-          )
-        ),
+        rows: ((result && result.apps) || []).map((app) => {
+          const states = [
+            app.running ? t('result.running', 'running') : null,
+            (app.cloudStorage || []).length > 0 ? t('result.cloudConnected', 'cloud account connected') : null,
+          ].filter(Boolean);
+          return row(app.name, [app.version, ...states].filter(Boolean).join(' · '), states.length > 0 ? 'warn' : null);
+        }),
       };
     },
 

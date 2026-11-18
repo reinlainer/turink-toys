@@ -32,11 +32,23 @@ function renderResult(shown) {
 function renderPlan(plan) {
   const lines = [`${plan.summary}`];
   for (const item of plan.items.slice(0, 10)) {
-    const size = item.bytes ? `  (${formatBytes(item.bytes)})` : '';
+    const size = item.sizeUnknown ? '  (size unknown)' : item.bytes ? `  (${formatBytes(item.bytes)})` : '';
     const basis = item.basis === 'name' ? '  [matched by name only]' : '';
-    lines.push(`  ${item.path}${size}${basis}`);
+    const guarded = item.protected ? '  [protected by macOS]' : '';
+    lines.push(`  ${item.path}${size}${basis}${guarded}`);
   }
   if (plan.items.length > 10) lines.push(`  … ${plan.items.length - 10} more`);
+
+  // Items a plan considered and decided to leave alone, with why.
+  const kept = plan.kept || [];
+  if (kept.length > 0) {
+    lines.push('Left in place:');
+    for (const entry of kept.slice(0, 10)) {
+      const users = (entry.sharedWith || []).length > 0 ? `  [also used by ${entry.sharedWith.join(', ')}]` : '';
+      lines.push(`  ${entry.path}${users}`);
+    }
+    if (kept.length > 10) lines.push(`  … ${kept.length - 10} more`);
+  }
   return lines.join('\n');
 }
 

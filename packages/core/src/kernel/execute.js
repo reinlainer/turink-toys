@@ -80,12 +80,17 @@ async function runTask(taskId, rawInput, options = {}) {
   }
 }
 
+// `kept` lists what the plan considered and leaves in place, each with the
+// reason, and `sizeUnknown` says `bytes` is a lower bound because part of what
+// the plan touches could not be read.
 function publicPlan(computed) {
   return {
     hash: computed.hash,
     summary: computed.summary,
     items: computed.items ?? [],
     bytes: computed.bytes ?? null,
+    ...(computed.kept && computed.kept.length > 0 ? { kept: computed.kept } : {}),
+    ...(computed.sizeUnknown ? { sizeUnknown: true } : {}),
   };
 }
 

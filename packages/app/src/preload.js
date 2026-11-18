@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('turink', {
   pickPaths: (directory) => ipcRenderer.invoke('dialog:pick', { directory }),
   loadOptions: (source) => ipcRenderer.invoke('options:load', source),
   rememberTask: (taskId) => ipcRenderer.invoke('settings:lastTask', taskId),
+  setSidebarCollapsed: (collapsed) => ipcRenderer.invoke('sidebar:set', collapsed),
   listRuns: () => ipcRenderer.invoke('runs:list'),
   readRun: (runId) => ipcRenderer.invoke('runs:read', runId),
   reveal: (target) => ipcRenderer.invoke('shell:reveal', target),
@@ -63,4 +64,5 @@ contextBridge.exposeInMainWorld('turink', {
   onFoldersChanged: (handler) => ipcRenderer.on('folders:changed', () => handler()),
   onClipboardChanged: (handler) => ipcRenderer.on('clipboard:changed', () => handler()),
   onShowScreen: (handler) => ipcRenderer.on('screen:show', (event, id) => handler(id)),
+  onToggleSidebar: (handler) => ipcRenderer.on('sidebar:toggle', () => handler()),
 });

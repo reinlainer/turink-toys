@@ -7,7 +7,7 @@ const { app, Menu, shell } = require('electron');
 // the menu is built here instead. Edit is kept because the window has text
 // fields and the system shortcuts stop working without it.
 
-function build(t, onOpenWindow, onAbout) {
+function build(t, onOpenWindow, onAbout, view = {}) {
   const name = app.getName();
 
   const template = [
@@ -33,6 +33,17 @@ function build(t, onOpenWindow, onAbout) {
         { role: 'copy', label: t('menu.copy', 'Copy') },
         { role: 'paste', label: t('menu.paste', 'Paste') },
         { role: 'selectAll', label: t('menu.selectAll', 'Select All') },
+      ],
+    },
+    {
+      label: t('menu.view', 'View'),
+      submenu: [
+        {
+          // Control-Command-S is the shortcut macOS apps use for the sidebar.
+          label: view.sidebarCollapsed ? t('menu.showSidebar', 'Show Sidebar') : t('menu.hideSidebar', 'Hide Sidebar'),
+          accelerator: 'Ctrl+Cmd+S',
+          click: () => view.onToggleSidebar && view.onToggleSidebar(),
+        },
       ],
     },
     {

@@ -53,12 +53,19 @@ module.exports = {
     bringAllToFront: '모두 앞으로 가져오기',
     help: '도움말',
     repository: '프로젝트 페이지',
+    view: '보기',
+    hideSidebar: '사이드바 가리기',
+    showSidebar: '사이드바 보기',
   },
 
   // Window text. Mirrors packages/app/src/strings.js; anything left out falls
   // back to the English written there.
   ui: {
     run: '실행',
+    sidebar: {
+      collapse: '사이드바 가리기',
+      expand: '사이드바 보기',
+    },
     loginItem: {
       label: '로그인 시 열기',
       failed: '로그인 항목 설정을 변경하지 못했습니다.',
@@ -186,6 +193,8 @@ module.exports = {
       noMatch: '검색 결과가 없습니다.',
       running: '실행 중',
       runningNote: '앱을 종료한 후 삭제할 수 있습니다',
+      cloudConnected: '클라우드 계정 연결됨',
+      cloudNote: '앱에서 계정 연결을 해제한 후 삭제할 수 있습니다',
       keepData: '설정 및 데이터 유지하기(앱만 삭제)',
       remove: '삭제',
       nothingSelected: '삭제할 앱을 선택하십시오',
@@ -194,12 +203,20 @@ module.exports = {
       noRecent: '삭제한 앱이 이곳에 표시되며, 원래 위치로 되돌릴 수 있습니다.',
       putBack: '되돌리기',
       protectedTitle: '앱 데이터 폴더 {count}개를 옮기지 못했습니다',
-      protectedMessage: 'macOS가 각 앱의 데이터를 다른 앱으로부터 보호하고 있어 이 폴더들을 옮길 수 없었습니다. Finder에서 직접 휴지통으로 옮기거나, 앱을 제거하기 전에 시스템 설정 > 개인정보 보호 및 보안 > 전체 디스크 접근 권한에서 Turink Toys를 허용하십시오.',
+      protectedTitleRemoved: '앱을 삭제했습니다. 데이터 폴더 {count}개는 남아 있습니다',
+      protectedMessage: 'macOS가 각 앱의 데이터를 다른 앱으로부터 보호하고 있어 이 폴더들은 옮기지 못했습니다. Finder에서 직접 휴지통으로 옮기면 정리가 끝납니다. 다음부터 한 번에 정리하려면 시스템 설정 > 개인정보 보호 및 보안 > 전체 디스크 접근 권한에서 Turink Toys를 허용하십시오.',
       protectedReveal: 'Finder에서 보기',
       confirmTitle: '휴지통으로 이동하시겠습니까?',
       confirmMessage: '다음 항목이 휴지통으로 이동됩니다. 최근 삭제 내역에서 되돌릴 수 있습니다.',
       nameOnly: '이름만 일치',
+      protectedBadge: '보호됨',
+      protectedNote: '「보호됨」으로 표시된 폴더 {count}개는 macOS가 다른 앱으로부터 보호하는 폴더입니다. 옮기지 못하면 그대로 남으며, Finder에서 직접 휴지통으로 옮길 수 있습니다.',
+      keptTitle: '다른 앱도 사용하므로 남겨 두는 항목',
+      sharedWith: '{apps}에서도 사용',
+      sharedWithMore: '{first} 외 {count}개',
+      sizeUnknown: '크기 확인 불가',
       totalSize: '전체 크기: {size}',
+      totalSizeAtLeast: '전체 크기: 최소 {size}',
     },
 
     power: {
@@ -534,6 +551,7 @@ module.exports = {
     restored: '되돌린 항목',
     appsRemoved: '삭제한 앱',
     running: '실행 중',
+    cloudConnected: '클라우드 계정 연결됨',
     lidCloses: '디스플레이를 닫을 때',
     lidStaysAwake: '잠자기 안 함',
     lidSleeps: '잠자기',
@@ -633,6 +651,10 @@ module.exports = {
     APP_RUNNING: {
       message: '실행 중인 앱은 삭제할 수 없습니다.',
       hint: '앱을 종료한 후 다시 시도하십시오.',
+    },
+    APP_CLOUD_CONNECTED: {
+      message: '{app}에 클라우드 계정이 연결되어 있어 삭제할 수 없습니다.',
+      hint: '{app}에서 계정 연결을 먼저 해제한 후 다시 시도하십시오. 연결을 해제하면 동기화 폴더도 함께 정리됩니다. 앱을 먼저 삭제하면 동기화 폴더가 남고, 앱을 다시 설치하기 전에는 이 폴더를 옮길 수 없습니다.',
     },
     NOT_KEPT: {
       message: '클립보드 보관함에 있는 이미지가 아닙니다.',
@@ -837,7 +859,7 @@ module.exports = {
     'apps.list': {
       title: '앱 목록',
       summary: '삭제할 수 있는 설치된 앱 목록',
-      whenToUse: '앱을 삭제하기 전에 정확한 이름과 실행 여부를 확인할 때 사용합니다.',
+      whenToUse: '앱을 삭제하기 전에 정확한 이름, 실행 여부, 연결된 클라우드 동기화 폴더를 확인할 때 사용합니다.',
       input: {
         all: { label: '보호된 앱 포함', description: 'macOS가 보호하는 시스템 앱 등 삭제할 수 없는 앱도 함께 표시합니다.' },
       },
@@ -847,7 +869,7 @@ module.exports = {
       title: '앱 삭제',
       summary: '앱과 앱이 남긴 설정, 캐시, 데이터를 휴지통으로 이동',
       whenToUse:
-        '앱을 관련 파일까지 모두 삭제할 때 사용합니다. 삭제 전에 함께 삭제될 파일 목록이 표시되며, 휴지통으로 이동되므로 되돌릴 수 있습니다.',
+        '앱을 관련 파일까지 모두 삭제할 때 사용합니다. 앱의 번들 ID와 앱에 포함된 보조 앱, 확장 프로그램의 ID로 찾은 설정, 캐시, 데이터 폴더와 앱이 서명에 선언한 공용 데이터 폴더를 함께 삭제합니다. 같은 회사의 다른 앱이 함께 쓰는 공용 데이터 폴더는 남겨 둡니다. 삭제 전에 함께 삭제될 파일 목록이 표시되며, 휴지통으로 이동되므로 되돌릴 수 있습니다. 클라우드 계정이 연결된 앱은 앱에서 연결을 해제한 후 삭제할 수 있습니다.',
       input: {
         apps: { label: '삭제할 앱', description: '삭제할 앱을 지정합니다.' },
         keepData: { label: '데이터 유지', description: '앱만 삭제하고 설정 및 데이터는 유지합니다.' },

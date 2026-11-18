@@ -33,6 +33,11 @@ module.exports = {
   moveToTrash: 'Move to Trash',
   trashNote: 'Everything goes to the Trash, so you can undo this from Recent cleanups.',
 
+  sidebar: {
+    collapse: 'Hide Sidebar',
+    expand: 'Show Sidebar',
+  },
+
   loginItem: {
     label: 'Open at Login',
     failed: 'macOS did not change the login item.',
@@ -138,6 +143,8 @@ module.exports = {
     noMatch: 'No apps match your search.',
     running: 'Running',
     runningNote: 'Quit the app to remove it',
+    cloudConnected: 'Cloud account connected',
+    cloudNote: 'Disconnect the account in the app to remove it',
     keepData: 'Keep the app’s settings and data, remove the app only',
     remove: 'Remove',
     nothingSelected: 'Select apps to remove',
@@ -146,12 +153,20 @@ module.exports = {
     noRecent: 'Apps you remove will appear here so you can put them back.',
     putBack: 'Put Back',
     protectedTitle: '{count} app data folders were left in place',
-    protectedMessage: 'macOS protects each app’s data from other apps, so these folders could not be moved. Move them to the Trash in Finder, or allow Turink Toys under System Settings > Privacy & Security > Full Disk Access before removing an app.',
+    protectedTitleRemoved: 'The app was removed. {count} data folders were left in place',
+    protectedMessage: 'macOS protects each app’s data from other apps, so Turink Toys could not move these folders. Move them to the Trash in Finder to finish. To have Turink Toys clear them in one go next time, allow it under System Settings > Privacy & Security > Full Disk Access.',
     protectedReveal: 'Show in Finder',
     confirmTitle: 'Move to the Trash?',
     confirmMessage: 'These items will be moved to the Trash. You can put them back from Recently removed.',
     nameOnly: 'Name match only',
+    protectedBadge: 'Protected',
+    protectedNote: 'macOS protects the {count} folders marked Protected from other apps. If they cannot be moved they stay in place, and you can move them to the Trash in Finder.',
+    keptTitle: 'Left in place because other apps use them too',
+    sharedWith: 'Also used by {apps}',
+    sharedWithMore: '{first} and {count} more',
+    sizeUnknown: 'Size unknown',
     totalSize: 'Total: {size}',
+    totalSizeAtLeast: 'Total: at least {size}',
   },
 
   power: {

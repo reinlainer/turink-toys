@@ -26,9 +26,15 @@ function resolveGlob(target) {
 // Logical size is what disk.report has always shown. Allocated size counts the
 // blocks a file actually occupies, which is what removing it frees; the two
 // differ for sparse files such as a virtual machine disk.
+//
+// A directory the process may not read, such as another app's data that macOS
+// protects, contributes nothing to the total. `complete` says whether that
+// happened, so a caller can present the total as a lower bound rather than as
+// the real size.
 function directorySize(root, { allocated = false } = {}) {
   let total = 0;
   let files = 0;
+  let complete = true;
   const stack = [root];
 
   while (stack.length > 0) {
@@ -36,8 +42,9 @@ function directorySize(root, { allocated = false } = {}) {
     let entries;
     try {
       entries = fs.readdirSync(current, { withFileTypes: true });
-    } catch {
-      continue; // A directory the user cannot read contributes nothing.
+    } catch (err) {
+      if (err.code !== 'ENOENT') complete = false;
+      continue;
     }
     for (const entry of entries) {
       const full = path.join(current, entry.name);
@@ -49,13 +56,15 @@ function directorySize(root, { allocated = false } = {}) {
           const stat = fs.statSync(full);
           total += allocated ? stat.blocks * 512 : stat.size;
           files += 1;
-        } catch {
-          // A file removed mid-scan needs no handling.
+        } catch (err) {
+          // A file removed mid-scan needs no handling; one that cannot be read
+          // leaves the total short.
+          if (err.code !== 'ENOENT') complete = false;
         }
       }
     }
   }
-  return { bytes: total, files };
+  return { bytes: total, files, complete };
 }
 
 function scanTarget(target) {

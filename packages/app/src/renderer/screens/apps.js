@@ -51,7 +51,9 @@
         state.loaded = true;
         if (!outcome.ok) return;
         state.apps = outcome.result.apps;
-        const paths = new Set(state.apps.map((app) => app.path));
+        const paths = new Set(
+          state.apps.filter((app) => !app.running && !(app.cloudStorage || []).length).map((app) => app.path)
+        );
         for (const chosen of [...state.selected]) if (!paths.has(chosen)) state.selected.delete(chosen);
         renderRows();
         renderBar();
@@ -96,10 +98,14 @@
         }
 
         for (const app of shown) {
-          const row = el('label', 'row' + (app.running ? ' disabled' : ''));
+          // A cloud account has to be disconnected in the app before removal,
+          // so such an app is held back the same way a running one is.
+          const cloud = (app.cloudStorage || []).length > 0;
+          const blocked = app.running || cloud;
+          const row = el('label', 'row' + (blocked ? ' disabled' : ''));
           const box = document.createElement('input');
           box.type = 'checkbox';
-          box.disabled = app.running;
+          box.disabled = blocked;
           box.checked = state.selected.has(app.path);
           box.addEventListener('change', () => {
             if (box.checked) state.selected.add(app.path);
@@ -113,8 +119,10 @@
           title.appendChild(el('span', null, app.name));
           if (app.version) title.appendChild(el('span', 'version', app.version));
           if (app.running) title.appendChild(el('span', 'badge', t().running));
+          if (cloud) title.appendChild(el('span', 'badge', t().cloudConnected));
           text.appendChild(title);
-          text.appendChild(el('span', 'row-note', app.running ? t().runningNote : tilde(app.path)));
+          const note = app.running ? t().runningNote : cloud ? t().cloudNote : tilde(app.path);
+          text.appendChild(el('span', 'row-note', note));
           row.appendChild(text);
           rows.appendChild(row);
         }
@@ -147,10 +155,14 @@
         bar.appendChild(go);
       }
 
+      const sizeText = (item) => (item.sizeUnknown ? t().sizeUnknown : item.bytes ? formatBytes(item.bytes) : '');
+
       function planBody(plan) {
+        const body = el('div', 'plan-body');
         const list = el('div', 'plan-list');
         for (const item of plan.items) {
-          const line = el('div', 'plan-row' + (item.kind === 'app' ? ' app' : ''));
+          // Not plain "app": that class lays out the whole window.
+          const line = el('div', 'plan-row' + (item.kind === 'app' ? ' is-app' : ''));
           if (item.kind === 'app') line.appendChild(appIcon(item.path));
           const text = el('div', 'plan-text');
           if (item.kind === 'app') {
@@ -161,12 +173,40 @@
             name.textContent = tilde(item.path).replace(/^~\/Library\//, '');
             text.appendChild(name);
             if (item.basis === 'name') text.appendChild(el('span', 'badge warn', t().nameOnly));
+            if (item.protected) text.appendChild(el('span', 'badge', t().protectedBadge));
           }
           line.appendChild(text);
-          line.appendChild(el('span', 'plan-size', item.bytes ? formatBytes(item.bytes) : ''));
+          line.appendChild(el('span', 'plan-size', sizeText(item)));
           list.appendChild(line);
         }
-        return list;
+        body.appendChild(list);
+
+        const guarded = plan.items.filter((item) => item.protected).length;
+        if (guarded > 0) body.appendChild(el('p', 'plan-note', format(t().protectedNote, { count: guarded })));
+
+        // Folders another app of the same vendor also declares stay where they
+        // are; they are shown so the person knows they were considered.
+        const kept = plan.kept || [];
+        if (kept.length > 0) {
+          body.appendChild(el('h3', 'plan-heading', t().keptTitle));
+          const keptList = el('div', 'plan-list kept');
+          for (const entry of kept) {
+            const line = el('div', 'plan-row');
+            const text = el('div', 'plan-text');
+            text.appendChild(el('span', 'plan-path', tilde(entry.path).replace(/^~\/Library\//, '')));
+            text.appendChild(el('span', 'plan-shared', format(t().sharedWith, { apps: sharedNames(entry.sharedWith) })));
+            line.appendChild(text);
+            keptList.appendChild(line);
+          }
+          body.appendChild(keptList);
+        }
+        return body;
+      }
+
+      function sharedNames(names) {
+        const list = names || [];
+        if (list.length <= 2) return list.join(', ');
+        return format(t().sharedWithMore, { first: list.slice(0, 2).join(', '), count: list.length - 2 });
       }
 
       async function remove() {
@@ -174,7 +214,9 @@
           confirm: (plan) =>
             ctx.sheet.open({
               title: t().confirmTitle,
-              message: `${t().confirmMessage}\n${format(t().totalSize, { size: formatBytes(plan.bytes || 0) })}`,
+              message: `${t().confirmMessage}\n${format(plan.sizeUnknown ? t().totalSizeAtLeast : t().totalSize, {
+                size: formatBytes(plan.bytes || 0),
+              })}`,
               body: planBody(plan),
               accept: s().moveToTrash,
               tone: 'danger',
@@ -190,18 +232,21 @@
       }
 
       // Folders macOS keeps from other apps are left behind rather than
-      // retried, and the person is told where they are and how to clear them.
+      // retried. The notice leads with what did happen, the app going to the
+      // Trash, so a partial run is not read as a failed one, then says where
+      // the folders are and how to clear them.
       async function explainProtected(result) {
         const kept = ((result && result.failed) || []).filter((item) => item.protected).map((item) => item.path);
         if (kept.length === 0) return;
+        const removed = ((result && result.apps) || []).length > 0;
         const reveal = await ctx.sheet.open({
-          title: format(t().protectedTitle, { count: kept.length }),
+          title: format(removed ? t().protectedTitleRemoved : t().protectedTitle, { count: kept.length }),
           message: t().protectedMessage,
-          detail: kept.join('\n'),
+          detail: kept.map(tilde).join('\n'),
           accept: t().protectedReveal,
           wide: true,
         });
-        if (reveal) window.turink.reveal(kept[0]);
+        if (reveal) window.turink.revealFiles(kept);
       }
 
       // ------------------------------------------------ recent

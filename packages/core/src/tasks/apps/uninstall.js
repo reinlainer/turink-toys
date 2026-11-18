@@ -8,7 +8,7 @@ const { assertUnderHome, assertAppBundle } = require('../../kernel/paths');
 const { moveToTrash, inProtectedData, PROTECTED_REASON } = require('../../kernel/trash');
 const { formatBytes } = require('../../kernel/format');
 const { row } = require('../../kernel/present');
-const { listApps, findLeftovers, sizeOf } = require('./bundles');
+const { listApps, findLeftovers, removalFacts, sizeOf } = require('./bundles');
 
 // A caller may name an application the way it knows it: the path apps.list
 // reported, the bundle identifier, or the name shown in Finder.
@@ -54,6 +54,18 @@ function resolveApps(requested, installed) {
         details: { app: app.name },
       });
     }
+    // A file provider's folder holds the account's files, some perhaps not
+    // uploaded yet, and once its app is gone macOS refuses to move the folder
+    // until the app is installed again and the account disconnected. So the
+    // account is disconnected first, from inside the app, which also has macOS
+    // remove the folder. This tool never removes such a folder itself.
+    if (app.cloudStorage && app.cloudStorage.length > 0) {
+      fail('APP_CLOUD_CONNECTED', `${app.name} still has a cloud storage account connected.`, {
+        hint: `Disconnect the account in ${app.name} first, which also removes ${app.cloudStorage.join(', ')}, then run the same command again. Removing the app first leaves that folder behind, and macOS will not let it be moved until the app is installed again.`,
+        retryable: true,
+        details: { app: app.name, folders: app.cloudStorage },
+      });
+    }
     if (!chosen.includes(app)) chosen.push(app);
   }
   return chosen;
@@ -65,11 +77,11 @@ register(
     title: 'Remove applications',
     summary: 'Move applications and the files they left in the Library to the Trash',
     whenToUse:
-      'Removing an application completely. The plan lists the application and every settings, cache and data folder found under its bundle identifier, each with the basis for including it. Everything goes to the Trash and apps.restore puts it back.',
+      'Removing an application completely. The plan lists the application and every settings, cache and data folder found under its bundle identifier or under the identifier of a helper or extension shipped inside it, plus the data groups its signature declares, each with the basis for including it. A data group another installed app from the same vendor also declares is listed under kept and left in place. Items macOS protects from other apps are marked protected and may stay behind unless Turink Toys has Full Disk Access; sizes it could not read are marked sizeUnknown. An app with a cloud storage account still connected is refused until the account is disconnected in the app. Everything goes to the Trash and apps.restore puts it back.',
     risk: 'destroy',
     cost: 'proportional',
     idempotent: false,
-    errors: ['UNKNOWN_APP', 'APP_PROTECTED', 'APP_RUNNING', 'NEEDS_CONFIRM', 'PLAN_MISMATCH', 'NEEDS_PRIVILEGE', 'LOCKED', 'PARTIAL'],
+    errors: ['UNKNOWN_APP', 'APP_PROTECTED', 'APP_RUNNING', 'APP_CLOUD_CONNECTED', 'NEEDS_CONFIRM', 'PLAN_MISMATCH', 'NEEDS_PRIVILEGE', 'LOCKED', 'PARTIAL'],
     input: {
       type: 'object',
       required: ['apps'],
@@ -125,22 +137,43 @@ register(
       const chosen = resolveApps(input.apps, installed);
 
       const items = [];
+      const kept = [];
       for (const app of chosen) {
         assertAppBundle(app.path);
-        items.push({ app: app.name, kind: 'app', basis: 'bundle', path: app.path, bytes: sizeOf(app.path) });
+        const size = sizeOf(app.path);
+        items.push({
+          app: app.name,
+          kind: 'app',
+          basis: 'bundle',
+          path: app.path,
+          bytes: size.bytes,
+          ...(size.complete ? {} : { sizeUnknown: true }),
+        });
         if (input.keepData || !app.bundleId) continue;
-        for (const leftover of findLeftovers(app, installed)) {
+        const facts = await removalFacts(app, installed);
+        const leftovers = findLeftovers(app, installed, undefined, facts);
+        for (const leftover of leftovers.items) {
           assertUnderHome(leftover.path);
-          items.push({ app: app.name, kind: 'data', ...leftover });
+          items.push({
+            app: app.name,
+            kind: 'data',
+            ...leftover,
+            ...(inProtectedData(leftover.path) ? { protected: true } : {}),
+          });
         }
+        for (const entry of leftovers.kept) kept.push({ app: app.name, ...entry });
       }
 
       const bytes = items.reduce((sum, item) => sum + item.bytes, 0);
+      const sizeUnknown = items.some((item) => item.sizeUnknown);
       const data = items.filter((item) => item.kind === 'data').length;
+      const total = sizeUnknown ? `at least ${formatBytes(bytes)}` : formatBytes(bytes);
       return {
         items,
+        kept,
         bytes,
-        summary: `${chosen.map((app) => app.name).join(', ')} and ${data} related item(s), ${formatBytes(bytes)}`,
+        sizeUnknown,
+        summary: `${chosen.map((app) => app.name).join(', ')} and ${data} related item(s), ${total}`,
       };
     },
 
