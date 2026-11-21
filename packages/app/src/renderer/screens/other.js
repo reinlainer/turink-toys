@@ -27,9 +27,14 @@
       if (ctx.taskById('mouse.reverse')) timer = mountWheelCard(root, ctx);
       if (ctx.taskById('tunnel.status')) tunnelTimer = mountTunnelCard(root, ctx);
       mountGenerated(root, ctx, (this.generated || []).map(ctx.taskById).filter(Boolean));
+      // A refresh already waiting on the core when the screen closes would
+      // otherwise schedule itself again, so each timer is marked stopped.
       this.unmount = () => {
-        clearTimeout(timer && timer.id);
-        clearTimeout(tunnelTimer && tunnelTimer.id);
+        for (const t of [timer, tunnelTimer]) {
+          if (!t) continue;
+          t.stopped = true;
+          clearTimeout(t.id);
+        }
       };
     },
   });
@@ -45,6 +50,7 @@
     async function refresh() {
       clearTimeout(timer.id);
       const outcome = await ctx.peek('mouse.status');
+      if (timer.stopped) return;
       if (outcome.ok) status = outcome.result;
       render();
       if (status && PENDING.includes(status.helper)) timer.id = setTimeout(refresh, 2000);
@@ -129,14 +135,23 @@
     async function refresh() {
       clearTimeout(timer.id);
       const outcome = await ctx.peek('tunnel.status');
+      if (timer.stopped) return;
       if (outcome.ok) status = outcome.result;
       // Typing in a field must not be undone by a redraw.
       if (!card.contains(document.activeElement) || document.activeElement.tagName !== 'INPUT') render();
       timer.id = setTimeout(refresh, 2000);
     }
 
-    function time(iso) {
-      return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    // The wording of the time lives in the strings, so a locale can spell it
+    // out (오후 2시 42분) or keep the clock form (2:42 PM).
+    function since(iso) {
+      const d = new Date(iso);
+      const hour = d.getHours() % 12 || 12;
+      return t().tunnelOnSince
+        .replace('{period}', d.getHours() < 12 ? t().tunnelAm : t().tunnelPm)
+        .replace('{hour}', hour)
+        .replace('{minute}', d.getMinutes())
+        .replace('{mm}', String(d.getMinutes()).padStart(2, '0'));
     }
 
     function statusLine(kind, title, rest) {
@@ -294,7 +309,7 @@
 
       const target = `${status.server}:${status.port}`;
       if (status.state === 'on') {
-        card.appendChild(statusLine('on', t().tunnelOnTitle, status.since ? `· ${t().tunnelOnSince.replace('{time}', time(status.since))}` : null));
+        card.appendChild(statusLine('on', t().tunnelOnTitle, status.since ? `· ${since(status.since)}` : null));
         const detail = el('p', 'muted');
         const parts = t().tunnelOnDetail.split('{server}');
         detail.append(parts[0], el('span', 'mono', target), parts[1] || '');

@@ -38,6 +38,7 @@ const TUN2SOCKS = {
 
 // A status file older than this means the daemon has stopped writing it.
 const STALE_MS = 30000;
+const DOWNLOAD_TIMEOUT_MS = 60000;
 
 function layout(dir = DIR) {
   return {
@@ -170,7 +171,7 @@ function plistXml(paths = layout()) {
 
 function download(url, redirects = 5) {
   return new Promise((resolve, reject) => {
-    https
+    const request = https
       .get(url, { headers: { 'User-Agent': 'turink-toys' } }, (res) => {
         if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects > 0) {
           res.resume();
@@ -188,6 +189,9 @@ function download(url, redirects = 5) {
         res.on('error', reject);
       })
       .on('error', reject);
+    // A connection that stalls would otherwise keep the elevated install, and
+    // the window waiting on it, open forever.
+    request.setTimeout(DOWNLOAD_TIMEOUT_MS, () => request.destroy(new Error('timed out')));
   });
 }
 
@@ -201,9 +205,11 @@ async function installedVersion(paths) {
 }
 
 // tun2socks is fetched from its official release rather than shipped in the
-// app, and refused unless it matches the published checksum.
-async function ensureTun2socks(paths) {
-  if ((await installedVersion(paths)) === `tun2socks-${TUN2SOCKS.version.slice(1)}`) return false;
+// app, and refused unless it matches the published checksum. It is staged
+// next to the installed copy and only moved into place once the service has
+// stopped, because the download may itself need the running tunnel.
+async function stageTun2socks(paths) {
+  if ((await installedVersion(paths)) === `tun2socks-${TUN2SOCKS.version.slice(1)}`) return null;
   let zip;
   try {
     zip = await download(TUN2SOCKS.url);
@@ -224,33 +230,41 @@ async function ensureTun2socks(paths) {
     await exec('/usr/bin/ditto', ['-x', '-k', path.join(temp, 't.zip'), path.join(temp, 'x')]);
     const binary = fs.readdirSync(path.join(temp, 'x')).find((name) => name.startsWith('tun2socks'));
     if (!binary) fail('FAILED', 'The tun2socks archive did not contain the program.');
-    fs.copyFileSync(path.join(temp, 'x', binary), paths.tun2socks);
-    fs.chmodSync(paths.tun2socks, 0o755);
+    const staged = `${paths.tun2socks}.new`;
+    fs.copyFileSync(path.join(temp, 'x', binary), staged);
+    return staged;
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }
-  return true;
+}
+
+// Files the root daemon runs are written under a new name and renamed into
+// place: a running zsh reads its script by offset, so rewriting the same file
+// under it would make it run a mix of old and new lines. They are also handed
+// to root, since copyFile can carry the person's ownership across.
+function placeRootFile(from, to, mode) {
+  const staged = from.endsWith('.new') ? from : `${to}.new`;
+  if (staged !== from) fs.copyFileSync(from, staged);
+  fs.chownSync(staged, 0, 0);
+  fs.chmodSync(staged, mode);
+  fs.renameSync(staged, to);
 }
 
 // Runs as root. The owner is the person the settings file belongs to.
 async function install(owner, paths = layout()) {
   fs.mkdirSync(paths.dir, { recursive: true, mode: 0o755 });
-  fs.chmodSync(paths.dir, 0o755);
-  const fetched = await ensureTun2socks(paths);
-  // copyFile can carry the source's owner across, and the source belongs to
-  // the person. A root daemon must never run a file someone else can rewrite,
-  // so everything it runs is handed to root explicitly.
   fs.chownSync(paths.dir, 0, 0);
-  fs.copyFileSync(paths.bundledDaemon, paths.daemon);
-  fs.chownSync(paths.daemon, 0, 0);
-  fs.chmodSync(paths.daemon, 0o755);
-  fs.chownSync(paths.tun2socks, 0, 0);
+  fs.chmodSync(paths.dir, 0o755);
+  const staged = await stageTun2socks(paths);
+
+  await stopService();
+  if (staged) placeRootFile(staged, paths.tun2socks, 0o755);
+  placeRootFile(paths.bundledDaemon, paths.daemon, 0o755);
   if (!fs.existsSync(paths.config)) fs.writeFileSync(paths.config, formatConfig({ enabled: true, ...DEFAULTS }));
   else fs.writeFileSync(paths.config, formatConfig({ ...readConfig(paths), enabled: true }));
   fs.chownSync(paths.config, owner, 20); // group staff
   fs.chmodSync(paths.config, 0o644);
 
-  await stopService();
   fs.writeFileSync(paths.plist, plistXml(paths), { mode: 0o644 });
   // bootstrap can still refuse for a moment after the old job is gone, so it
   // is tried a few times before giving up.
@@ -269,7 +283,7 @@ async function install(owner, paths = layout()) {
     fs.rmSync(paths.plist, { force: true });
     fail('FAILED', `The tunnel service could not be started: ${String(lastError.stderr || lastError.message).trim()}`);
   }
-  return { fetched };
+  return { fetched: Boolean(staged) };
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
