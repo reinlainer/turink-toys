@@ -1,0 +1,262 @@
+#!/bin/zsh
+# Proxy tunnel service. launchd runs it as root (com.turink.toys.tunnel).
+#
+# Every two seconds it reads the owner's settings and decides whether all of
+# the Mac's traffic should go through the SOCKS5 proxy. It turns the tunnel on
+# when the proxy can be reached and off when it no longer can, so moving to a
+# network without the proxy never leaves the Mac routed into nothing. A proxy
+# that answers but cannot reach the internet is backed out of as well.
+#
+# The settings file belongs to the user, so every value is checked before it
+# reaches a command line. Only an IPv4 address and a port are accepted.
+
+emulate -L zsh
+setopt pipefail
+
+DIR="/Library/Application Support/turink-toys/tunnel"
+BIN="$DIR/tun2socks"
+CONF="$DIR/config"
+STATUS="$DIR/status.json"
+STATE="$DIR/state.env"
+LOG="$DIR/tunnel.log"
+
+TUN_DEV="utun233"
+TUN_ADDR="198.18.0.1"
+DNS_SERVERS=(1.1.1.1 8.8.8.8)
+
+INTERVAL=2           # seconds between checks
+MISSES_TO_DROP=3     # unreachable checks in a row before turning off
+HEALTH_EVERY=5       # checks between internet probes while on (about 10 s)
+FAILS_TO_DROP=2      # failed internet probes in a row before turning off
+PROBLEM_HOLD=30      # seconds to wait before trying again after a failed probe
+HEARTBEAT=10         # seconds between status rewrites when nothing changes
+SETTLE=10            # seconds a newly joined network must stay unchanged before turning on
+
+log() { print -r -- "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOG"; }
+
+# ---------------------------------------------------------------- settings
+
+ENABLED=0 SERVER="" PORT=""
+read_config() {
+  ENABLED=0; SERVER=""; PORT=""
+  [[ -f "$CONF" ]] || return
+  local key value
+  while IFS='=' read -r key value; do
+    case "$key" in
+      ENABLED) [[ "$value" == (0|1) ]] && ENABLED="$value" ;;
+      SERVER) is_ipv4 "$value" && SERVER="$value" ;;
+      PORT) [[ "$value" == <1-65535> ]] && PORT="$value" ;;
+    esac
+  done < "$CONF"
+}
+
+is_ipv4() {
+  [[ "$1" =~ '^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$' ]] || return 1
+  local part
+  for part in $match; do (( part <= 255 )) || return 1; done
+}
+
+# ---------------------------------------------------------------- status
+
+CURRENT="" SINCE=0 WRITTEN_AT=0 WRITTEN=""
+set_status() {
+  local state="$1" now; now=$(date +%s)
+  [[ "$state" != "$CURRENT" ]] && { CURRENT="$state"; SINCE=$now; }
+  local body="{\"state\":\"$CURRENT\",\"since\":$SINCE,\"server\":\"$SERVER\",\"port\":\"$PORT\",\"updated\":$now}"
+  # Rewritten on any change, and now and then so readers can tell the service is alive.
+  if [[ "$CURRENT:$SERVER:$PORT" != "$WRITTEN" ]] || (( now - WRITTEN_AT >= HEARTBEAT )); then
+    print -r -- "$body" > "$STATUS.tmp" && mv -f "$STATUS.tmp" "$STATUS"
+    chmod 644 "$STATUS"
+    WRITTEN="$CURRENT:$SERVER:$PORT"; WRITTEN_AT=$now
+  fi
+}
+
+# ---------------------------------------------------------------- network
+
+# While the tunnel is up, a connection to an address off the local network
+# would itself be routed into the tunnel, and tun2socks answers it locally, so
+# a proxy left behind on another network would still look reachable. The check
+# is therefore pinned to the physical interface the tunnel started on.
+reachable() {
+  local iface; iface=$(state_get IFACE)
+  if [[ -f "$STATE" && -n "$iface" && "$SERVER" != 127.* ]]; then
+    nc -z -G 2 -b "$iface" "$SERVER" "$PORT" >/dev/null 2>&1
+  else
+    nc -z -G 2 "$SERVER" "$PORT" >/dev/null 2>&1
+  fi
+}
+
+internet_ok() {
+  [[ "$(curl -s -m 6 -o /dev/null -w '%{http_code}' http://captive.apple.com/hotspot-detect.html)" == 200 ]]
+}
+
+state_get() { awk -F= -v k="$1" '$1==k{ sub(/^[^=]*=/, ""); print; exit }' "$STATE" 2>/dev/null; }
+
+tunnel_alive() {
+  local pid; pid=$(state_get PID)
+  [[ -n "$pid" ]] && ps -p "$pid" -o comm= 2>/dev/null | grep -q tun2socks
+}
+
+service_of() {  # interface (en0) -> network service name (Wi-Fi)
+  networksetup -listnetworkserviceorder | awk -v dev="$1" '
+    /^\([0-9]+\)/ { sub(/^\([0-9]+\) /, ""); name=$0 }
+    $0 ~ "Device: " dev "\\)" { print name; exit }'
+}
+
+# macOS applies a joined network's own saved settings, DNS and proxies among
+# them, a few seconds after the address arrives (seen as "DNS! Proxy!" from
+# configd about six seconds after joining). A tunnel switched on before that
+# has its DNS replaced and fails its first internet check, so a new network
+# must stay unchanged for a while first.
+NET_KEY="" NET_SINCE=0
+network_settled() {
+  local key
+  key="$(route -n get default 2>/dev/null | awk '/interface:|gateway:/{printf "%s ", $2}')$(ipconfig getifaddr en0 2>/dev/null)"
+  if [[ "$key" != "$NET_KEY" ]]; then NET_KEY="$key"; NET_SINCE=$(date +%s); fi
+  (( $(date +%s) - NET_SINCE >= SETTLE ))
+}
+
+# The same settings can arrive again while the tunnel is up, so the DNS servers
+# are checked on every pass and put back if something else replaced them.
+keep_dns() {
+  local svc current; svc=$(state_get SERVICE)
+  [[ -n "$svc" ]] || return
+  current=$(networksetup -getdnsservers "$svc" 2>/dev/null | tr '\n' ' ')
+  if [[ "$current" != "${DNS_SERVERS[*]} " ]]; then
+    networksetup -setdnsservers "$svc" $DNS_SERVERS
+    dscacheutil -flushcache; killall -HUP mDNSResponder 2>/dev/null
+    log "DNS was replaced ($current); set again"
+  fi
+}
+
+UP_SERVER="" UP_PORT=""
+up() {
+  local iface gw svc dns_before host_route=0
+  iface=$(route -n get default 2>/dev/null | awk '/interface:/{print $2}')
+  gw=$(route -n get default 2>/dev/null | awk '/gateway:/{print $2}')
+  svc=$(service_of "$iface")
+  [[ -n "$iface" && -n "$svc" ]] || { log "no default route"; return 1; }
+
+  dns_before=$(networksetup -getdnsservers "$svc" 2>/dev/null | tr '\n' ' ')
+  [[ "$dns_before" == *"aren't any"* ]] && dns_before="Empty"
+
+  # tun2socks warns once per refused connection, so a moment of apps retrying
+  # toward a proxy that just went away wrote 126 000 lines in a minute. Only
+  # errors are kept, and the file starts empty each time.
+  : > "$LOG.tun2socks"
+  "$BIN" --device "$TUN_DEV" --proxy "socks5://$SERVER:$PORT" --loglevel error >>"$LOG.tun2socks" 2>&1 &!
+  local pid=$!
+  {
+    print "PID=$pid"; print "SERVER=$SERVER"; print "IFACE=$iface"; print "SERVICE=$svc"; print "DNS_BEFORE=$dns_before"; print "GATEWAY=$gw"
+  } > "$STATE"
+
+  local i
+  for i in {1..30}; do ifconfig "$TUN_DEV" >/dev/null 2>&1 && break; sleep 0.1; done
+  if ! ifconfig "$TUN_DEV" >/dev/null 2>&1; then
+    log "tun device did not appear"
+    down
+    return 1
+  fi
+
+  # A proxy beyond the local network is reached through the original gateway,
+  # or the tunnel would route its own connection into itself.
+  if [[ "$SERVER" != 127.* && -n "$gw" ]] && route -n get "$SERVER" 2>/dev/null | grep -q 'gateway:'; then
+    route -q -n add -host "$SERVER" "$gw" >/dev/null && host_route=1
+  fi
+  print "HOST_ROUTE=$host_route" >> "$STATE"
+
+  ifconfig "$TUN_DEV" "$TUN_ADDR" "$TUN_ADDR" up
+  route -q -n add -net 0.0.0.0/1 "$TUN_ADDR" >/dev/null
+  route -q -n add -net 128.0.0.0/1 "$TUN_ADDR" >/dev/null
+  networksetup -setdnsservers "$svc" $DNS_SERVERS
+  dscacheutil -flushcache; killall -HUP mDNSResponder 2>/dev/null
+  UP_SERVER="$SERVER"; UP_PORT="$PORT"
+  log "on: $SERVER:$PORT via $svc"
+  return 0
+}
+
+down() {
+  [[ -f "$STATE" ]] || return 0
+  local pid server svc dns_before gw host_route
+  pid=$(state_get PID); server=$(state_get SERVER); svc=$(state_get SERVICE)
+  dns_before=$(state_get DNS_BEFORE); gw=$(state_get GATEWAY); host_route=$(state_get HOST_ROUTE)
+  [[ -n "$pid" ]] && kill "$pid" 2>/dev/null
+  route -q -n delete -net 0.0.0.0/1 "$TUN_ADDR" >/dev/null 2>&1
+  route -q -n delete -net 128.0.0.0/1 "$TUN_ADDR" >/dev/null 2>&1
+  [[ "$host_route" == 1 && -n "$server" ]] && route -q -n delete -host "$server" "$gw" >/dev/null 2>&1
+  if [[ -n "$svc" ]]; then
+    if [[ -z "$dns_before" || "$dns_before" == "Empty" ]]; then
+      networksetup -setdnsservers "$svc" Empty
+    else
+      networksetup -setdnsservers "$svc" ${=dns_before}
+    fi
+  fi
+  dscacheutil -flushcache; killall -HUP mDNSResponder 2>/dev/null
+  rm -f "$STATE"
+  log "off"
+  UP_SERVER=""; UP_PORT=""
+}
+
+# ---------------------------------------------------------------- loop
+
+shutdown() { down; read_config; set_status off; exit 0; }
+trap shutdown TERM INT
+
+# A previous run that ended without cleaning up left its routes behind.
+[[ -f "$STATE" ]] && { log "cleaning up after an earlier run"; down; }
+
+misses=0 fails=0 tick=0 hold_until=0
+while true; do
+  read_config
+  now=$(date +%s)
+
+  if [[ -f "$STATE" ]]; then
+    if [[ "$ENABLED" != 1 || "$SERVER" != "$UP_SERVER" || "$PORT" != "$UP_PORT" ]]; then
+      down
+    elif ! tunnel_alive; then
+      log "tun2socks stopped"
+      down
+    elif ! reachable; then
+      (( ++misses >= MISSES_TO_DROP )) && { log "proxy unreachable"; down; }
+    else
+      misses=0
+      keep_dns
+      if (( ++tick % HEALTH_EVERY == 0 )); then
+        if internet_ok; then fails=0
+        elif (( ++fails >= FAILS_TO_DROP )); then
+          log "no internet through the proxy"
+          down; hold_until=$(( now + PROBLEM_HOLD )); set_status problem
+        fi
+      fi
+    fi
+    [[ -f "$STATE" ]] && set_status on
+  fi
+
+  if [[ ! -f "$STATE" ]]; then
+    misses=0 fails=0 tick=0
+    if [[ "$ENABLED" != 1 || -z "$SERVER" || -z "$PORT" ]]; then
+      hold_until=0; set_status off
+    elif (( now < hold_until )); then
+      set_status problem
+    elif ! network_settled; then
+      set_status waiting
+    elif reachable; then
+      if up; then
+        # The first probe decides whether the proxy can carry traffic at all.
+        ok=0
+        for i in 1 2 3; do internet_ok && { ok=1; break; }; sleep 1; done
+        if (( ok )); then
+          set_status on
+        else
+          log "no internet through the proxy"
+          down; hold_until=$(( $(date +%s) + PROBLEM_HOLD )); set_status problem
+        fi
+      else
+        set_status waiting
+      fi
+    else
+      [[ "$CURRENT" == problem ]] && (( now < hold_until )) || set_status waiting
+    fi
+  fi
+  sleep "$INTERVAL"
+done

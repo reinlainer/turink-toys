@@ -18,6 +18,7 @@ module.exports = {
     power: '전원',
     apps: '앱',
     clipboard: '클립보드',
+    tunnel: '프록시 터널',
   },
 
   update: {
@@ -471,6 +472,39 @@ module.exports = {
       wheelNeedsPermission: '손쉬운 사용에서 Turink-Toys Scroll Reverser를 켜십시오. 이미 켜져 있으면 목록에서 제거한 후 이 스위치를 껐다가 다시 켜십시오.',
       wheelOpenSettings: '손쉬운 사용 설정 열기',
       wheelStopped: '스크롤 도우미가 실행되지 않고 있습니다. 스위치를 껐다가 다시 켜십시오.',
+      tunnelTitle: "프록시 터널",
+      tunnelPoints: "Mac의 모든 인터넷 통신이 지정한 프록시를 거침\ngit, brew 같은 터미널 도구도 별도 설정 불필요\n프록시에 연결할 수 있을 때만 자동으로 켜지고, 연결할 수 없으면 원래대로 복원",
+      tunnelInstallBody: "처음 한 번 설치해야 합니다. 네트워크 경로를 변경하는 구성 요소를 설치하며, Mac 관리자 암호를 한 번 입력해야 합니다. 이후에는 다시 묻지 않습니다.",
+      tunnelInstall: "설치",
+      tunnelCancel: "취소",
+      tunnelServer: "서버",
+      tunnelPort: "포트",
+      tunnelDefaultNote: "DirectBridge 기본값",
+      tunnelReset: "기본값으로 재설정",
+      tunnelSave: "저장",
+      tunnelWaitingTitle: "연결 대기 중",
+      tunnelWaitingBody: "프록시에 연결할 수 있으면 자동으로 켜집니다.",
+      tunnelWaitingDirectBridge: "폰의 DirectBridge 앱에서 「공유 시작」을 누르고, Mac을 폰 Wi-Fi(DIRECT-…)에 연결하십시오.",
+      tunnelOnTitle: "프록시 연결됨",
+      tunnelOnSince: "{time}부터",
+      tunnelOnDetail: "{server} · DNS 1.1.1.1 · 프록시에 연결할 수 없게 되면 자동으로 꺼집니다.",
+      tunnelProblemTitle: "인터넷에 연결되지 않음",
+      tunnelProblemBody: "인터넷에 연결되지 않아 원래 경로로 되돌렸습니다. 프록시의 인터넷 연결을 확인하십시오. 연결이 확인되면 자동으로 다시 켜집니다.",
+      tunnelProblemDirectBridge: "폰의 모바일 데이터가 켜져 있는지 확인하십시오.",
+      tunnelStopped: "구성 요소가 응답하지 않습니다. 프록시 터널을 제거한 후 다시 설치하십시오.",
+      tunnelRemove: "프록시 터널 제거",
+      tunnelRemoveTitle: "프록시 터널을 제거하겠습니까?",
+      tunnelRemoveBody: "설치된 구성 요소와 다운로드한 파일을 삭제합니다. 다시 사용하려면 처음부터 새로 설치해야 합니다. 계속 진행하려면 Mac 관리자 암호를 한 번 입력해야 합니다.",
+      tunnelRemoveOk: "제거",
+      tunnelRemoveCancel: "취소",
+      tunnelRemoved: "프록시 터널을 제거했습니다.",
+      tunnelMenu: "프록시 터널",
+      tunnelMenuOn: "프록시 연결됨",
+      tunnelMenuWaiting: "연결 대기 중",
+      tunnelMenuProblem: "인터넷에 연결되지 않음",
+      tunnelMenuOff: "꺼짐",
+      tunnelTurnOff: "끄기",
+      tunnelTurnOn: "켜기",
     },
   },
 
@@ -585,6 +619,15 @@ module.exports = {
     helperOff: '꺼짐',
     wheelPermissionNote: '시스템 설정 > 개인정보 보호 및 보안 > 손쉬운 사용에서 Turink-Toys Scroll Reverser를 켜십시오. 이미 켜져 있으면 목록에서 제거한 후 휠 반전을 다시 켜십시오.',
     wheelStoppedNote: '스크롤 도우미가 등록되어 있지만 실행되지 않고 있습니다. 휠 반전을 껐다가 다시 켜십시오.',
+    tunnelState: "프록시 터널",
+    tunnelTarget: "프록시",
+    tunnelOn: "프록시 연결됨",
+    tunnelWaiting: "연결 대기 중",
+    tunnelProblem: "인터넷에 연결되지 않음",
+    tunnelStopped: "응답 없음",
+    tunnelNotInstalled: "설치되지 않음",
+    tunnelOff: "꺼짐",
+    tunnelStoppedNote: "구성 요소가 응답하지 않습니다. 프록시 터널을 제거한 후 다시 설치하십시오.",
   },
 
   // Displayed when a run stops at a gate. The English message stays in the
@@ -663,6 +706,10 @@ module.exports = {
     NO_IMAGE: {
       message: '클립보드에 보관할 이미지가 없습니다.',
       hint: '이미지를 복사한 후 다시 실행하십시오.',
+    },
+    TUNNEL_NOT_INSTALLED: {
+      message: '프록시 터널이 설치되어 있지 않습니다.',
+      hint: 'Turink Toys 창에서 한 번 설치하거나 터미널에서 sudo turink-toys tunnel.install을 실행하십시오.',
     },
     HELPER_MISSING: {
       message: '이 빌드에는 필요한 도우미가 포함되어 있지 않습니다.',
@@ -1045,6 +1092,54 @@ module.exports = {
       input: {
         off: { label: '끄기', description: '휠 반전을 끄고 시스템 설정의 방향으로 되돌립니다.' },
       },
+    },
+
+    'tunnel.status': {
+      title: '프록시 터널 상태',
+      summary: 'Mac의 모든 통신이 SOCKS5 프록시를 거치는지 확인',
+      whenToUse:
+        '프록시 터널의 설치 여부와 켜짐 여부, 사용하는 프록시, 현재 통신이 프록시를 거치는지 확인할 때 사용합니다. 상태만 읽습니다.',
+      input: {},
+    },
+
+    'tunnel.enable': {
+      title: '프록시 터널 켜기·끄기',
+      summary: '프록시 터널을 켜거나 끄기',
+      whenToUse:
+        '터미널 도구를 포함한 Mac의 모든 통신을 SOCKS5 프록시로 보내거나 중단할 때 사용합니다. 켜 두면 프록시에 연결할 수 있을 때 자동으로 연결되고, 연결할 수 없으면 원래 경로로 되돌아갑니다. 먼저 한 번 설치(tunnel.install)해야 합니다. 몇 초 안에 적용됩니다.',
+      input: {
+        off: { label: '끄기', description: '프록시 터널을 끄고 원래 경로를 사용합니다.' },
+      },
+    },
+
+    'tunnel.target': {
+      title: '프록시 터널 서버',
+      summary: '프록시 터널이 사용할 SOCKS5 프록시 지정',
+      whenToUse:
+        'DirectBridge 기본값(192.168.49.1:8282)이 아닌 SOCKS5 프록시를 사용하거나 --default로 기본값으로 되돌릴 때 사용합니다. DNS 조회가 통과해야 하므로 프록시가 UDP를 지원해야 합니다. 먼저 한 번 설치(tunnel.install)해야 합니다.',
+      input: {
+        server: { label: '서버', description: '프록시의 IPv4 주소입니다. 예: 192.168.49.1' },
+        port: { label: '포트', description: '프록시 포트입니다.' },
+        default: { label: 'DirectBridge 기본값 사용', description: '192.168.49.1:8282로 되돌립니다.' },
+      },
+    },
+
+    'tunnel.install': {
+      title: '프록시 터널 설치',
+      summary: '모든 통신을 SOCKS5 프록시로 보내는 구성 요소 설치',
+      whenToUse:
+        '프록시 터널을 처음 한 번 설정할 때 사용합니다. 공식 배포본에서 tun2socks를 다운로드하여 공개된 체크섬과 대조하고 백그라운드 구성 요소를 등록한 후 프록시 터널을 켭니다. 관리자 권한이 필요하므로 에이전트 혼자서는 완료할 수 없습니다.',
+      input: {
+        owner: { label: '소유자', description: '프록시 터널 설정 파일을 소유할 사용자 ID입니다. 지정하지 않으면 sudo를 실행한 사용자입니다.' },
+      },
+    },
+
+    'tunnel.uninstall': {
+      title: '프록시 터널 제거',
+      summary: '프록시 터널 구성 요소를 제거하고 네트워크 설정 복원',
+      whenToUse:
+        '프록시 터널을 더 이상 사용하지 않을 때 사용합니다. 구성 요소를 중지하여 경로와 DNS를 먼저 원래대로 되돌린 후 구성 요소, tun2socks, 설정을 삭제합니다. 관리자 권한이 필요하므로 에이전트 혼자서는 완료할 수 없습니다.',
+      input: {},
     },
 
     'folders.list': {

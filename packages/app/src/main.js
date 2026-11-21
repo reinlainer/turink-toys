@@ -202,8 +202,46 @@ async function openFolder(folder) {
   if (error) notify(i18n.t(locale, 'notify.folderOpenFailed', 'Could not open {name}.', { name: folder.name }));
 }
 
+async function tunnelStatus() {
+  try {
+    const outcome = await execute.runTask('tunnel.status', {}, { source: 'app', ephemeral: true });
+    return outcome.result;
+  } catch {
+    return null;
+  }
+}
+
+async function switchTunnel(on) {
+  try {
+    await execute.runTask('tunnel.enable', on ? {} : { off: true }, { source: 'app', ephemeral: true });
+  } catch {
+    // The window shows the reason; the menu just reflects the state below.
+  }
+  refreshTray();
+}
+
+// The daemon rewrites its status file on every change and every ten seconds.
+// The menu is rebuilt when the state differs, and a drop to "problem" is
+// announced because the person may be relying on the tunnel at that moment.
+let tunnelState = null;
+function watchTunnel() {
+  const statusFile = '/Library/Application Support/turink-toys/tunnel/status.json';
+  fs.watchFile(statusFile, { interval: 3000 }, async () => {
+    const status = await tunnelStatus();
+    const state = status ? status.state : null;
+    if (state === tunnelState) return;
+    if (state === 'problem' && tunnelState === 'on') {
+      const t = (key, fallback) => i18n.t(locale, key, fallback);
+      notify(`${t('ui.other.tunnelProblemTitle', 'No internet')} — ${t('ui.other.tunnelProblemBody', '')}`);
+    }
+    tunnelState = state;
+    refreshTray();
+  });
+}
+
 async function buildTrayMenu() {
   const { folders, groups } = await savedFolders();
+  const tunnel = await tunnelStatus();
   return Menu.buildFromTemplate(
     trayMenu.template(
       folders,
@@ -214,9 +252,11 @@ async function buildTrayMenu() {
         edit: () => showScreen('folders'),
         screen: (id) => showScreen(id),
         window: () => createWindow(),
+        tunnel: (on) => switchTunnel(on),
       },
       DISPLAY_NAME,
-      buildUiStrings().nav
+      buildUiStrings().nav,
+      tunnel && tunnel.installed ? { status: tunnel, labels: buildUiStrings().other } : null
     )
   );
 }
@@ -242,6 +282,7 @@ function createTray() {
   tray = new Tray(icon);
   tray.setToolTip(DISPLAY_NAME);
   refreshTray();
+  watchTunnel();
 
   // Dropping folders from Finder onto the icon saves them without opening
   // anything. Files are not folders and are left out.
@@ -614,7 +655,7 @@ ipcMain.handle('apps:icon', async (event, appPath) => {
 // sudo, so the command line runs under macOS's own administrator prompt. Only
 // tasks listed here can go this way, and their input is validated against the
 // manifest before anything is put on a command line.
-const ELEVATED = new Set(['power.lid']);
+const ELEVATED = new Set(['power.lid', 'tunnel.install', 'tunnel.uninstall']);
 
 function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'\\''`)}'`;
@@ -626,6 +667,10 @@ ipcMain.handle('task:runElevated', async (event, { taskId, input }) => {
   if (!ELEVATED.has(taskId)) {
     return { ok: false, error: { code: 'FAILED', message: `${taskId} does not run with administrator rights.` } };
   }
+
+  // The tunnel's settings file is handed to the person running the app, which
+  // the root process cannot tell on its own.
+  if (taskId === 'tunnel.install') input = { ...(input || {}), owner: process.getuid() };
 
   let checked;
   try {

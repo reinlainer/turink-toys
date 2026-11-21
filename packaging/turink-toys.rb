@@ -29,8 +29,14 @@ cask "turink-toys" do
         must_succeed: false
   end
 
-  # The wheel reverser's launch agent is withdrawn only on zap. An uninstall
-  # directive would also run on every upgrade and silently turn reversal off.
-  zap launchctl: "toys.turink.app.scroll-reverser",
+  # The wheel reverser's launch agent and the proxy tunnel daemon are withdrawn
+  # only on zap. An uninstall directive would also run on every upgrade and
+  # silently turn them off. Stopping the tunnel daemon restores the routes and
+  # DNS before it exits.
+  zap launchctl: ["toys.turink.app.scroll-reverser", "com.turink.toys.tunnel"],
+      delete:    [
+        "/Library/LaunchDaemons/com.turink.toys.tunnel.plist",
+        "/Library/Application Support/turink-toys",
+      ],
       trash:     "~/Library/Application Support/turink-toys"
 end

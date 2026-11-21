@@ -34,7 +34,28 @@ function folderItem(folder, actions) {
 // folder that cannot be reached is shown but cannot be chosen. Groups become
 // headings inside that one submenu rather than submenus of their own, so any
 // folder is still two clicks away; a group with no folders is left out.
-function template(folders, groups, actions, appName, screens = strings.nav) {
+// The proxy tunnel gets one submenu with its state and a switch, shown only
+// once it is installed.
+function tunnelMenu(tunnel, actions) {
+  const { status, labels } = tunnel;
+  const state = {
+    on: labels.tunnelMenuOn,
+    waiting: labels.tunnelMenuWaiting,
+    problem: labels.tunnelMenuProblem,
+    stopped: labels.tunnelMenuProblem,
+  }[status.enabled ? status.state : 'off'] || labels.tunnelMenuOff;
+  return {
+    label: labels.tunnelMenu,
+    submenu: [
+      { label: `${status.enabled && status.state === 'on' ? '● ' : ''}${state}`, enabled: false },
+      status.enabled
+        ? { label: labels.tunnelTurnOff, click: () => actions.tunnel(false) }
+        : { label: labels.tunnelTurnOn, click: () => actions.tunnel(true) },
+    ],
+  };
+}
+
+function template(folders, groups, actions, appName, screens = strings.nav, tunnel = null) {
   const items = folders.filter((folder) => !folder.group).map((folder) => folderItem(folder, actions));
   for (const group of groups) {
     const members = folders.filter((folder) => folder.group === group.name);
@@ -58,10 +79,11 @@ function template(folders, groups, actions, appName, screens = strings.nav) {
         { label: 'Edit Folders…', click: () => actions.edit() },
       ],
     },
+    ...(tunnel ? [tunnelMenu(tunnel, actions)] : []),
     { type: 'separator' },
     { label: `Open ${appName}`, click: () => actions.window() },
     { label: 'Quit', role: 'quit' },
   ];
 }
 
-module.exports = { template, PLACE_NAMES };
+module.exports = { template, tunnelMenu, PLACE_NAMES };

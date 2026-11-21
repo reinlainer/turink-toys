@@ -6,10 +6,10 @@ const { fail } = require('./errors');
 
 const run = promisify(execFile);
 
-// Raising privilege is confined to the power domain and to this module. Any
-// other caller reaching here is a defect, so the guard throws rather than
-// prompting.
-const ALLOWED_DOMAINS = new Set(['power']);
+// Raising privilege is confined to the power and tunnel domains and to this
+// module. Any other caller reaching here is a defect, so the guard throws
+// rather than prompting.
+const ALLOWED_DOMAINS = new Set(['power', 'tunnel']);
 
 function assertAllowed(domain) {
   if (!ALLOWED_DOMAINS.has(domain)) {
