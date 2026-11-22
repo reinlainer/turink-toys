@@ -1063,16 +1063,18 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .images-group-reveal { flex: none; display: inline-flex; align-items: center; gap: 5px; border: 0; background: none; color: var(--ink-2); border-radius: 6px; padding: 3px 7px; font-size: 12px; cursor: pointer; }
 .images-group-reveal:hover { background: var(--hover); color: var(--ink); }
 .images-tile-sub { font-size: 10.5px; text-align: center; color: var(--ink-3); margin-top: -4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.images-pick-dot {
+/* The select circle on a tile, shared by the Images and Clipboard screens: it
+   shows on hover and fills once the item is chosen, as in Photos. */
+.pick-dot {
   position: absolute; top: 9px; left: 9px; width: 22px; height: 22px; border-radius: 50%; z-index: 2;
   display: none; align-items: center; justify-content: center; cursor: pointer;
   border: 1.5px solid rgba(255, 255, 255, 0.95); background: rgba(0, 0, 0, 0.18); color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
-.images-pick-dot .icon { opacity: 0; }
-.images-tile:hover .images-pick-dot, .images-tile.picked .images-pick-dot { display: flex; }
-.images-tile.picked .images-pick-dot { background: var(--accent); }
-.images-tile.dropped .images-pick-dot { display: flex; }
-.images-tile.picked .images-pick-dot .icon { opacity: 1; }
+.pick-dot .icon { opacity: 0; }
+.images-tile:hover .pick-dot, .images-tile.picked .pick-dot, .images-tile.dropped .pick-dot,
+.clip-tile:hover .pick-dot, .clip-tile.selected .pick-dot { display: flex; }
+.images-tile.picked .pick-dot, .clip-tile.selected .pick-dot { background: var(--accent); }
+.images-tile.picked .pick-dot .icon, .clip-tile.selected .pick-dot .icon { opacity: 1; }
 .images-empty { padding: 60px 20px; text-align: center; color: var(--ink-3); grid-column: 1 / -1; }
 
 .images-splitter { flex: none; width: 7px; cursor: col-resize; position: relative; }
@@ -1162,8 +1164,6 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .clip-thumb img { max-width: 100%; max-height: 100%; border-radius: 3px; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.12); transition: transform 0.12s ease; }
 .clip-thumb img.missing { width: 60%; height: 60%; box-shadow: none; }
 .clip-tile.selected .clip-thumb img { outline: 3px solid var(--accent); outline-offset: 1px; transform: scale(0.9); }
-.clip-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; display: none; align-items: center; justify-content: center; background: var(--accent); color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
-.clip-tile.selected .clip-check { display: flex; }
 .clip-time { font-size: 11.5px; text-align: center; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .clip-tile.selected .clip-time { color: var(--accent-text); font-weight: 600; }
 .clip-empty { padding: 50px 20px; text-align: center; color: var(--ink-3); }

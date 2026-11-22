@@ -109,11 +109,12 @@
         img.src = thumbURL(item.path, 220);
         img.addEventListener('error', () => img.classList.add('missing'));
         thumb.appendChild(img);
-        const check = el('span', 'clip-check');
-        check.appendChild(icon('check'));
-        thumb.appendChild(check);
-        box.appendChild(thumb);
-        box.appendChild(el('span', 'clip-time', timeLabel(item, recent)));
+        // The circle shows on hover and stays once selected, as in Photos, so
+        // several images can be picked without holding a key.
+        const pick = el('span', 'pick-dot');
+        pick.title = s().files.select;
+        pick.appendChild(icon('check', null, 12));
+        box.append(thumb, pick, el('span', 'clip-time', timeLabel(item, recent)));
         return box;
       }
 
@@ -188,7 +189,15 @@
         state.focus = p;
       }
 
-      const tileOf = (event) => event.target.closest && event.target.closest('.clip-tile');
+      const tileOf = (event) => event.target.closest('.clip-tile');
+      const onPick = (event) => Boolean(event.target.closest('.pick-dot'));
+
+      function toggleSelected(p) {
+        if (state.selected.has(p)) state.selected.delete(p);
+        else state.selected.add(p);
+        state.focus = p;
+        state.anchor = p;
+      }
 
       gallery.addEventListener('mousedown', (event) => {
         if (event.button !== 0) return;
@@ -201,11 +210,8 @@
           return;
         }
         const p = box.dataset.path;
-        if (event.metaKey) {
-          if (state.selected.has(p)) state.selected.delete(p);
-          else state.selected.add(p);
-          state.focus = p;
-          state.anchor = p;
+        if (event.metaKey || (onPick(event) && !event.shiftKey)) {
+          toggleSelected(p);
         } else if (event.shiftKey) {
           selectRange(p);
         } else if (!state.selected.has(p)) {
@@ -218,14 +224,14 @@
 
       gallery.addEventListener('click', (event) => {
         const box = tileOf(event);
-        if (!box || event.metaKey || event.shiftKey) return;
+        if (!box || event.metaKey || event.shiftKey || onPick(event)) return;
         selectOnly(box.dataset.path);
         paintSelection();
       });
 
       gallery.addEventListener('dblclick', (event) => {
         const box = tileOf(event);
-        if (box) view(box.dataset.path);
+        if (box && !onPick(event)) view(box.dataset.path);
       });
 
       gallery.addEventListener('dragstart', (event) => {

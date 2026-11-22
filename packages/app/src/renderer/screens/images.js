@@ -552,7 +552,7 @@
         const mark = badge(item);
         if (mark) thumb.appendChild(mark);
         // The circle shows on hover and stays once picked, as in Photos.
-        const pick = el('span', 'images-pick-dot');
+        const pick = el('span', 'pick-dot');
         pick.title = t().select;
         pick.appendChild(icon('check', null, 12));
         pick.addEventListener('mousedown', (event) => {
