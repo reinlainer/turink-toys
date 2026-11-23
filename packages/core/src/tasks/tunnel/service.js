@@ -145,6 +145,18 @@ function readStatus(paths = layout(), now = Date.now()) {
   };
 }
 
+// The service acts on a change at its next pass, two seconds at most, so a
+// status read straight after one still shows the state from before it. Tasks
+// that change the tunnel wait briefly for a report that reflects the change.
+async function awaitStatus(accept, { paths = layout(), timeoutMs = 5000, stepMs = 250 } = {}) {
+  let status = readStatus(paths);
+  for (let waited = 0; waited < timeoutMs && !accept(status); waited += stepMs) {
+    await sleep(stepMs);
+    status = readStatus(paths);
+  }
+  return status;
+}
+
 // ---------------------------------------------------------------- install
 
 function plistXml(paths = layout()) {
@@ -266,6 +278,9 @@ async function install(owner, paths = layout()) {
   fs.chmodSync(paths.config, 0o644);
 
   fs.writeFileSync(paths.plist, plistXml(paths), { mode: 0o644 });
+  // The stopped service's last report says off. Removed, so the first report
+  // seen afterwards is the new service's.
+  fs.rmSync(paths.status, { force: true });
   // bootstrap can still refuse for a moment after the old job is gone, so it
   // is tried a few times before giving up.
   let lastError = null;
@@ -328,6 +343,7 @@ module.exports = {
   readConfig,
   writeConfig,
   readStatus,
+  awaitStatus,
   plistXml,
   install,
   uninstall,

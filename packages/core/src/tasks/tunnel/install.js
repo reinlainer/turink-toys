@@ -45,7 +45,7 @@ register(
       const { fetched } = await service.install(owner);
       run.info(fetched ? 'tun2socks downloaded and verified.' : 'tun2socks already present.');
       run.info('Proxy tunnel installed and switched on.');
-      return service.readStatus();
+      return service.awaitStatus((status) => status.state !== 'stopped');
     },
   })
 );

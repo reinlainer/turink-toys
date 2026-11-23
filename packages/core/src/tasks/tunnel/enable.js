@@ -33,7 +33,8 @@ register(
     async execute(run, input) {
       service.writeConfig({ enabled: !input.off });
       run.info(input.off ? 'Proxy tunnel switched off.' : 'Proxy tunnel switched on.');
-      return service.readStatus();
+      const active = (status) => ['on', 'waiting', 'problem'].includes(status.state);
+      return service.awaitStatus((status) => (input.off ? !active(status) : status.state !== 'off'));
     },
   })
 );

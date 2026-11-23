@@ -79,3 +79,26 @@ test('the daemon runs the installed script with zsh, at load and kept alive', ()
 test('the bundled service script parses', () => {
   execFileSync('/bin/zsh', ['-n', service.layout().bundledDaemon]);
 });
+
+// Unbound, tun2socks's connections to the proxy fall into the tunnel whenever
+// Wi-Fi loses its address for a moment, and loop there until no port is left.
+test('tun2socks reaches the proxy over the interface the tunnel started on', () => {
+  const script = fs.readFileSync(service.layout().bundledDaemon, 'utf8');
+  const launch = script.split('\n').find((line) => line.includes('"$BIN" --device'));
+  assert.ok(launch && launch.includes('--interface "$iface"'), launch);
+});
+
+test('a change waits for the service to report it, but not forever', async () => {
+  const paths = tempLayout(true);
+  fs.writeFileSync(paths.config, service.formatConfig({ enabled: true, ...service.DEFAULTS }));
+  const report = (state) => JSON.stringify({ state, since: Date.now() / 1000, updated: Date.now() / 1000 });
+  fs.writeFileSync(paths.status, report('off'));
+  setTimeout(() => fs.writeFileSync(paths.status, report('waiting')), 60);
+  const seen = await service.awaitStatus((s) => s.state !== 'off', { paths, stepMs: 20 });
+  assert.equal(seen.state, 'waiting');
+
+  const started = Date.now();
+  const late = await service.awaitStatus((s) => s.state === 'on', { paths, timeoutMs: 100, stepMs: 20 });
+  assert.equal(late.state, 'waiting');
+  assert.ok(Date.now() - started < 1000);
+});

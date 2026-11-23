@@ -151,8 +151,14 @@ up() {
   # tun2socks warns once per refused connection, so a moment of apps retrying
   # toward a proxy that just went away wrote 126 000 lines in a minute. Only
   # errors are kept, and the file starts empty each time.
+  #
+  # tun2socks's own connections to the proxy are bound to the physical
+  # interface. Unbound, they follow the routing table, and when Wi-Fi drops its
+  # address for a moment the proxy's address falls under the tunnel's routes:
+  # each connection then enters the tunnel, tun2socks answers it and dials the
+  # proxy again, and the loop runs until the Mac's ephemeral ports are gone.
   : > "$LOG.tun2socks"
-  "$BIN" --device "$TUN_DEV" --proxy "socks5://$SERVER:$PORT" --loglevel error >>"$LOG.tun2socks" 2>&1 &!
+  "$BIN" --device "$TUN_DEV" --proxy "socks5://$SERVER:$PORT" --interface "$iface" --loglevel error >>"$LOG.tun2socks" 2>&1 &!
   local pid=$!
   {
     print "PID=$pid"; print "SERVER=$SERVER"; print "IFACE=$iface"; print "SERVICE=$svc"; print "DNS_BEFORE=$dns_before"; print "GATEWAY=$gw"
