@@ -367,6 +367,7 @@ module.exports = {
     trashed: 'Moved 1 image to the Trash.',
     trashedMany: 'Moved {count} images to the Trash.',
     selection: '{count} selected',
+    selectAll: 'Select All',
     copy: 'Copy',
     view: 'View',
     trash: 'Move to Trash',

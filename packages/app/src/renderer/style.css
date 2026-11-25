@@ -1072,7 +1072,7 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 }
 .pick-dot .icon { opacity: 0; }
 .images-tile:hover .pick-dot, .images-tile.picked .pick-dot, .images-tile.dropped .pick-dot,
-.clip-tile:hover .pick-dot, .clip-tile.selected .pick-dot { display: flex; }
+.clip-tile:hover .pick-dot, .clip-gallery.selecting .pick-dot { display: flex; }
 .images-tile.picked .pick-dot, .clip-tile.selected .pick-dot { background: var(--accent); }
 .images-tile.picked .pick-dot .icon, .clip-tile.selected .pick-dot .icon { opacity: 1; }
 .images-empty { padding: 60px 20px; text-align: center; color: var(--ink-3); grid-column: 1 / -1; }
@@ -1152,10 +1152,14 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 /* ------------------------------------------------------------ clipboard */
 
 .clip-setting-side { flex: none; padding-top: 2px; }
-.clip-gallery { display: flex; flex-direction: column; gap: 8px; outline: none; min-height: 120px; }
+/* The screen is the frame the selection rectangle is drawn in. */
+.screen-body.screen-clipboard { position: relative; }
+/* The gaps between images and the margin below them leave room to start a
+   selection rectangle from empty space. */
+.clip-gallery { display: flex; flex-direction: column; gap: 10px; outline: none; min-height: 120px; padding-bottom: 28px; }
 .clip-group { display: flex; align-items: baseline; gap: 8px; padding: 8px 2px 0; font-weight: 650; color: var(--ink-2); }
 .clip-group-count { font-weight: 500; font-size: 12px; color: var(--ink-3); }
-.clip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.clip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px 14px; }
 .clip-tile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 6px; border-radius: 10px; cursor: default; -webkit-user-drag: element; }
 .clip-tile:hover { background: var(--hover); }
 .clip-tile.current { background: color-mix(in srgb, var(--ink) 8%, transparent); }
@@ -1167,7 +1171,10 @@ body.busy .action-bar .button.primary { pointer-events: none; opacity: 0.55; }
 .clip-time { font-size: 11.5px; text-align: center; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .clip-tile.selected .clip-time { color: var(--accent-text); font-weight: 600; }
 .clip-empty { padding: 50px 20px; text-align: center; color: var(--ink-3); }
-.clip-bar { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin: 0 -14px -24px; background: color-mix(in srgb, var(--window) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); }
+.clip-marquee { position: absolute; z-index: 3; pointer-events: none; border: 1px solid var(--accent); border-radius: 3px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.clip-bar { position: sticky; z-index: 4; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin: 0 -14px -24px; background: color-mix(in srgb, var(--window) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line); }
 .clip-bar-count { font-weight: 600; color: var(--accent-text); white-space: nowrap; }
+.clip-bar-count:empty { display: none; }
+.clip-bar .button[hidden] { display: none; }
 .clip-bar-space { flex: 1; }
 .clip-bar .danger-text:not(:disabled) { color: var(--danger); }

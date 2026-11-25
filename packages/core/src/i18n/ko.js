@@ -411,6 +411,7 @@ module.exports = {
       trashed: '이미지 1개를 휴지통으로 이동했습니다.',
       trashedMany: '이미지 {count}개를 휴지통으로 이동했습니다.',
       selection: '{count}개 선택',
+      selectAll: '전체 선택',
       copy: '복사',
       view: '보기',
       trash: '휴지통으로 이동',
